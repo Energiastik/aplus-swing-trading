@@ -8,3 +8,4 @@ requests
 pyarrow
 claude-agent-sdk>=0.2
 mcp
+reportlab>=4.0
