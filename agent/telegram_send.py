@@ -1,9 +1,14 @@
 """Push the finished PDF (and an optional short caption) to the configured
 Telegram chat. Reads TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID from the
-environment — set these as secrets on the routine, never hardcode them.
+environment. This repo is public and the claude.ai routine platform has no
+environment-secrets store, so there's no "set it once, forget it" option —
+pass the two values inline on the command line that invokes this module (see
+strategy/ROUTINE_PROMPT.md for how the automated routine does it). Never
+commit real values into this repo.
 
 Usage:
-    python -m agent.telegram_send output/swing_report_2026-08-07.pdf "3 candidates today"
+    TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=... \
+      python -m agent.telegram_send output/swing_report_2026-08-07.pdf "3 candidates today"
 """
 from __future__ import annotations
 import os
