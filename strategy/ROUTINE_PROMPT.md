@@ -43,9 +43,9 @@ zero-candidate day:
    can embed it), footer_note. Every field must come from what you actually
    found this run — leave a field out rather than invent it.
 
-   Write EVERY free-text field in Kazakh: sector_rotation_highlights,
+   Write EVERY free-text field in Russian: sector_rotation_highlights,
    top10[].explanation, verdicts[].reasoning, footer_note, vix_note. The PDF
-   template's own labels/headers are already Kazakh in code — you're
+   template's own labels/headers are already Russian in code — you're
    responsible for the narrative content matching. Keep tickers, prices, and
    standard trading shorthand (EMA, RSI, R/R, VDU, SPY, grades A-F) as-is;
    translate the surrounding explanation. Write it to output/results_<date>.json.
