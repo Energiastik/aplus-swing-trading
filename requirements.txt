@@ -1,0 +1,10 @@
+yfinance>=0.2.40
+pandas>=2.0
+numpy
+mplfinance
+finvizfinance
+anthropic>=0.34
+requests
+pyarrow
+claude-agent-sdk>=0.2
+mcp
