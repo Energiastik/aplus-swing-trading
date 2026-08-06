@@ -6,10 +6,17 @@ from __future__ import annotations
 
 import datetime as dt
 import io
+import sys
 import time
+from pathlib import Path
 
 import pandas as pd
 import requests
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import yf_compat
+yf_compat.patch()
+
 import yfinance as yf
 
 import config

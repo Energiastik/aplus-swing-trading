@@ -1,8 +1,14 @@
 """Data layer — yfinance OHLCV + fundamentals, with simple on-disk caching."""
 from __future__ import annotations
+import sys
 import time
 from pathlib import Path
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import yf_compat
+yf_compat.patch()
+
 import yfinance as yf
 
 CACHE = Path(__file__).resolve().parent.parent / "output" / "_cache"

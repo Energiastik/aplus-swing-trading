@@ -10,8 +10,16 @@ this is the routine's configured prompt.
 ---
 
 ```
-pip install -r requirements.txt -q
+pip install -r requirements.txt -r sector-rotation/requirements.txt -q --ignore-installed PyJWT
+```
+(`--ignore-installed PyJWT`: the sandbox ships a debian-packaged PyJWT with no
+RECORD file, which makes pip's normal uninstall-then-upgrade step fail and
+abort the whole install before yfinance even lands — this flag sidesteps it.
+Both requirements files: sector-rotation/ is a separate subproject with its
+own deps, e.g. tabulate/openpyxl for pipeline.py, not covered by the root
+file.)
 
+```
 Then run today's full swing scan exactly per strategy/DAILY_PROMPT.md (read
 that file first — same rules, same overrides: no halal gate, real structural
 stops, ≥10-day earnings floor, +10%+ realistic target framing, the granular
