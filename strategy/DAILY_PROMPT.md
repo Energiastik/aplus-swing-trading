@@ -89,13 +89,24 @@ Run the full scan in this order:
    from this prompt as the operative earnings filter instead, but still report
    both).
 
-10. FINAL TABLE — Top ≤10 candidates: ticker · composite score · A+ score ·
-    sector-rotation stage (Building/Emerging/Leading/Fading) · chart grade + one-line
-    visual read · entry/stop/target (from real structural levels) · R/R ·
-    expected % gain to target · shares at 1% risk on a $10,000 deposit (state if
-    you use a different deposit) · regime-adjusted size. If fewer than 10 pass,
-    say so plainly — never force a setup to fill the table. Footer: "confirm halal
-    compliance yourself."
+10. FINAL OUTPUT — three tiers, don't collapse them into just the survivors:
 
-    End with: which ONE name is the single best setup today and why, in 3 sentences.
+    a. ALL CANDIDATES — list every ticker the screener returned (limit-40 output),
+       at minimum ticker + sector, so nothing found today is invisible even if it
+       never got a deep look.
+
+    b. TOP 10 TABLE — up to 10 names ranked by composite technical score,
+       REGARDLESS of whether they cleared every hard gate: ticker · composite
+       score · A+ score · sector-rotation stage (Building/Emerging/Leading/
+       Fading) · chart grade · R/R · earnings-days · one-line explanation
+       (why it's ranked here, and which gate(s) it fails if any). This is the
+       full picture, not just the names you'd actually enter.
+
+    c. TOP ≤3 RECOMMENDATION VERDICTS — the names that genuinely clear every
+       hard gate (EMA200, R/R≥3:1 from real structural levels, chart grade ≠ F,
+       earnings ≥10 trading days out): entry/stop/target · R/R · expected %
+       gain to target · shares at 1% risk on a $10,000 deposit (state if you
+       use a different deposit) · regime-adjusted size · full reasoning. If
+       fewer than 3 qualify — including zero — say so plainly and stop there.
+       Never pad this list to hit 3. Footer: "confirm halal compliance yourself."
 ```

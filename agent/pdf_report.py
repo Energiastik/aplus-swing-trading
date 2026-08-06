@@ -1,11 +1,16 @@
-"""Build the daily swing-scan PDF from a structured results dict.
+"""Build the daily swing-scan PDF (in Kazakh) from a structured results dict.
 
-This does NOT run any analysis itself — the calling agent (Claude, working
+This does NOT run any analysis itself -- the calling agent (Claude, working
 through strategy/DAILY_PROMPT.md) does the regime/sector/screener/technical/
-chart-vision work and hands the findings here as plain data. Keeping this
-module dumb-on-purpose means the judgment calls (chart grading, R/R from
-real structural levels, which name is the best pick) stay with whoever ran
-the scan, not baked into a rigid script.
+chart-vision work and hands the findings here as plain data, already written
+in Kazakh for every free-text field. Keeping this module dumb-on-purpose
+means the judgment calls (chart grading, R/R from real structural levels,
+which names are the top verdicts) stay with whoever ran the scan.
+
+Reportlab's built-in fonts (Helvetica etc.) cannot render Cyrillic at all --
+Kazakh text would come out as blank boxes. assets/fonts/DejaVuSans(.ttf/-Bold)
+is bundled in this repo specifically to fix that; it's registered below and
+used for every style.
 
 Usage:
     python -m agent.pdf_report results.json output/swing_report_2026-08-07.pdf
@@ -19,32 +24,59 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
 )
+
+ROOT = Path(__file__).resolve().parent.parent
+FONT_DIR = ROOT / "assets" / "fonts"
 
 NAVY = colors.HexColor("#0a1628")
 GOLD = colors.HexColor("#d4af37")
 CREAM = colors.HexColor("#e8e2d0")
 GREY = colors.HexColor("#666666")
 
+MODE_KZ = {
+    "AGGRESSIVE": "АГРЕССИВТІ",
+    "CAUTIOUS": "САҚТЫҚПЕН",
+    "NO_TRADE": "САУДА ЖОҚ (тек бақылау)",
+}
+
+
+def _register_fonts() -> None:
+    if "DejaVuSans" in pdfmetrics.getRegisteredFontNames():
+        return
+    pdfmetrics.registerFont(TTFont("DejaVuSans", str(FONT_DIR / "DejaVuSans.ttf")))
+    pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", str(FONT_DIR / "DejaVuSans-Bold.ttf")))
+
 
 def _styles():
+    _register_fonts()
     ss = getSampleStyleSheet()
-    ss.add(ParagraphStyle("H1", parent=ss["Heading1"], textColor=NAVY, spaceAfter=4))
-    ss.add(ParagraphStyle("H2", parent=ss["Heading2"], textColor=NAVY, spaceBefore=14, spaceAfter=6))
-    ss.add(ParagraphStyle("Body", parent=ss["BodyText"], leading=14))
-    ss.add(ParagraphStyle("Small", parent=ss["BodyText"], fontSize=8.5, textColor=GREY, leading=11))
-    ss.add(ParagraphStyle("Note", parent=ss["BodyText"], fontSize=9.5, leading=13, spaceBefore=4))
+    for name in list(ss.byName):
+        ss[name].fontName = "DejaVuSans"
+    ss.add(ParagraphStyle("H1", parent=ss["Heading1"], fontName="DejaVuSans-Bold",
+                           textColor=NAVY, spaceAfter=4))
+    ss.add(ParagraphStyle("H2", parent=ss["Heading2"], fontName="DejaVuSans-Bold",
+                           textColor=NAVY, spaceBefore=14, spaceAfter=6))
+    ss.add(ParagraphStyle("Body", parent=ss["BodyText"], fontName="DejaVuSans", leading=14))
+    ss.add(ParagraphStyle("Small", parent=ss["BodyText"], fontName="DejaVuSans",
+                           fontSize=8.5, textColor=GREY, leading=11))
+    ss.add(ParagraphStyle("Note", parent=ss["BodyText"], fontName="DejaVuSans",
+                           fontSize=9.5, leading=13, spaceBefore=4))
     return ss
 
 
 def _regime_block(data: dict, ss) -> list:
     r = data["regime"]
+    mode_kz = MODE_KZ.get(r.get("mode", ""), r.get("mode", ""))
     checks = r.get("checks", {})
     check_lines = "  ".join(("✓" if ok else "✗") + " " + k for k, ok in checks.items())
     flow = [
-        Paragraph(f"Regime: <b>{r['mode']}</b> ({r['score']}/4, size ×{r.get('size_multiplier', 1)})", ss["Body"]),
+        Paragraph(f"Режим: <b>{mode_kz}</b> ({r['score']}/4, көлем ×{r.get('size_multiplier', 1)})",
+                  ss["Body"]),
         Paragraph(check_lines, ss["Small"]),
     ]
     if r.get("vix") is not None:
@@ -53,52 +85,81 @@ def _regime_block(data: dict, ss) -> list:
 
 
 def _sector_table(data: dict, ss) -> Table:
-    rows = [["Rank", "ETF", "Sector", "1W vs SPY", "4W vs SPY", "12W vs SPY", "Weighted"]]
+    rows = [["Орын", "ETF", "Сектор", "1АП/SPY", "4АП/SPY", "12АП/SPY", "Салм. балл"]]
     for s in data.get("sector_table", []):
         rows.append([s.get("rank", ""), s.get("etf", ""), s.get("sector", ""),
                      s.get("w1", ""), s.get("w4", ""), s.get("w12", ""), s.get("weighted", "")])
-    t = Table(rows, hAlign="LEFT", colWidths=[0.5 * inch, 0.5 * inch, 1.7 * inch,
-                                               0.9 * inch, 0.9 * inch, 0.9 * inch, 0.7 * inch])
+    t = Table(rows, hAlign="LEFT", colWidths=[0.45 * inch, 0.45 * inch, 1.45 * inch,
+                                               0.85 * inch, 0.85 * inch, 0.85 * inch, 1.1 * inch])
     t.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), "DejaVuSans"),
+        ("FONTNAME", (0, 0), (-1, 0), "DejaVuSans-Bold"),
         ("BACKGROUND", (0, 0), (-1, 0), NAVY),
         ("TEXTCOLOR", (0, 0), (-1, 0), CREAM),
-        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f2ec")]),
         ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]))
     return t
 
 
-def _candidate_block(c: dict, ss) -> list:
-    flow = [Paragraph(
-        f"<b>{c['ticker']}</b> — score {c.get('composite_score', '?')} · "
-        f"A+ {c.get('aplus_score', '?')} · stage {c.get('sector_stage', '?')} · "
-        f"chart grade <b>{c.get('chart_grade', '?')}</b>",
-        ss["H2"])]
-    if c.get("chart_path") and Path(c["chart_path"]).exists():
-        flow.append(Image(c["chart_path"], width=5.5 * inch, height=3.2 * inch))
-    facts = [
-        ["Entry", c.get("entry", "")], ["Stop", c.get("stop", "")], ["Target", c.get("target", "")],
-        ["R/R", c.get("rr", "")], ["Expected gain", c.get("expected_gain_pct", "")],
-        ["Earnings in", c.get("earnings_days", "")],
-        ["Shares @1% risk", c.get("shares_1pct", "")],
-        ["Shares (regime-adjusted)", c.get("shares_regime_adjusted", "")],
+def _all_candidates_block(data: dict, ss) -> list:
+    tickers = data.get("all_candidates", [])
+    if not tickers:
+        return []
+    line = "  ·  ".join(
+        f"{c.get('ticker', c) if isinstance(c, dict) else c}"
+        + (f" ({c.get('sector')})" if isinstance(c, dict) and c.get("sector") else "")
+        for c in tickers
+    )
+    return [
+        Paragraph(f"Скринерден өткен барлық кандидаттар ({len(tickers)}):", ss["H2"]),
+        Paragraph(line, ss["Small"]),
     ]
-    t = Table(facts, colWidths=[1.6 * inch, 4 * inch], hAlign="LEFT")
+
+
+def _top10_table(data: dict, ss) -> list:
+    top10 = data.get("top10", [])
+    if not top10:
+        return [Paragraph("Топ-10 үшін жеткілікті кандидат табылмады.", ss["Body"])]
+    header = ["Тикер", "Балл", "Диагр.", "Кезең", "R/R", "Есеп/\nкүн", "Түсініктеме"]
+    rows = [header]
+    for c in top10:
+        rows.append([
+            c.get("ticker", ""), c.get("composite_score", ""), c.get("chart_grade", ""),
+            c.get("sector_stage", ""), c.get("rr", "—"), c.get("earnings_days", "—"),
+            Paragraph(c.get("explanation", ""), ss["Small"]),
+        ])
+    t = Table(rows, hAlign="LEFT", colWidths=[0.55 * inch, 0.45 * inch, 0.5 * inch,
+                                               0.85 * inch, 0.5 * inch, 0.75 * inch, 2.7 * inch])
     t.setStyle(TableStyle([
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("FONTNAME", (0, 0), (-1, -1), "DejaVuSans"),
+        ("FONTNAME", (0, 0), (-1, 0), "DejaVuSans-Bold"),
+        ("BACKGROUND", (0, 0), (-1, 0), NAVY),
+        ("TEXTCOLOR", (0, 0), (-1, 0), CREAM),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f2ec")]),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]))
-    flow.append(t)
-    if c.get("chart_note"):
-        flow.append(Paragraph(f"<i>Chart read:</i> {c['chart_note']}", ss["Note"]))
-    if c.get("volume_note"):
-        flow.append(Paragraph(f"<i>Volume context:</i> {c['volume_note']}", ss["Note"]))
-    if c.get("notes"):
-        flow.append(Paragraph(f"<i>Notes:</i> {c['notes']}", ss["Note"]))
+    return [Paragraph("Топ-10 кандидат", ss["H1"]), t]
+
+
+def _verdict_block(v: dict, ss) -> list:
+    flow = [Paragraph(
+        f"<b>{v['ticker']}</b> — Кіру {v.get('entry','')} · Тоқтату {v.get('stop','')} · "
+        f"Мақсат {v.get('target','')} · R/R {v.get('rr','')} · "
+        f"Күтілетін өсім {v.get('expected_gain_pct','')}", ss["H2"])]
+    if v.get("chart_path") and Path(v["chart_path"]).exists():
+        flow.append(Image(v["chart_path"], width=5.3 * inch, height=3.0 * inch))
+    if v.get("reasoning"):
+        flow.append(Paragraph(v["reasoning"], ss["Note"]))
     flow.append(Spacer(1, 10))
     return flow
 
@@ -107,20 +168,22 @@ def build_pdf(data: dict, out_path: str | Path) -> Path:
     """data schema (all keys optional except date/regime):
     {
       "date": "2026-08-07",
-      "regime": {"score": int, "mode": str, "vix": float|None, "vix_note": str,
+      "regime": {"score": int, "mode": "AGGRESSIVE"|"CAUTIOUS"|"NO_TRADE",
+                 "vix": float|None, "vix_note": str (Kazakh),
                  "size_multiplier": float, "checks": {label: bool}},
       "sector_table": [{"rank","etf","sector","w1","w4","w12","weighted"}],
-      "sector_rotation_highlights": "free text paragraph — Building/Emerging/Fading read",
-      "screener_count": int,
-      "candidates": [{
-          "ticker","composite_score","aplus_score","sector_stage",
-          "chart_path","chart_grade","chart_note",
-          "entry","stop","target","rr","expected_gain_pct","earnings_days",
-          "volume_note","shares_1pct","shares_regime_adjusted","notes"
-      }],
-      "rejected_count": int,
-      "best_pick": {"ticker": str, "reasoning": str},
-      "footer_note": str,
+      "sector_rotation_highlights": "Kazakh free text",
+      "all_candidates": [{"ticker","sector"}] or [ticker, ...] -- every name
+          the screener returned, tickers at minimum.
+      "top10": [{
+          "ticker","composite_score","chart_grade","sector_stage","rr",
+          "earnings_days","explanation" (Kazakh, one line)
+      }] -- up to 10, ranked, regardless of whether they cleared every gate.
+      "verdicts": [{
+          "ticker","entry","stop","target","rr","expected_gain_pct",
+          "chart_path","reasoning" (Kazakh)
+      }] -- 0-3 names that genuinely clear every hard gate. Never padded.
+      "footer_note": str (Kazakh),
     }
     """
     out_path = Path(out_path)
@@ -130,10 +193,10 @@ def build_pdf(data: dict, out_path: str | Path) -> Path:
                              topMargin=0.6 * inch, bottomMargin=0.6 * inch,
                              leftMargin=0.6 * inch, rightMargin=0.6 * inch)
     flow = [
-        Paragraph(f"A+ Swing Trading — Daily Scan · {data.get('date', '')}", ss["H1"]),
+        Paragraph(f"A+ Swing Trading — Күнделікті Скрининг · {data.get('date', '')}", ss["H1"]),
         *_regime_block(data, ss),
         Spacer(1, 10),
-        Paragraph("Sector Rotation", ss["H2"]),
+        Paragraph("Сектор Ротациясы", ss["H2"]),
     ]
     if data.get("sector_table"):
         flow.append(_sector_table(data, ss))
@@ -142,34 +205,27 @@ def build_pdf(data: dict, out_path: str | Path) -> Path:
         flow.append(Paragraph(data["sector_rotation_highlights"], ss["Body"]))
 
     flow.append(Spacer(1, 10))
-    n = len(data.get("candidates", []))
-    flow.append(Paragraph(
-        f"Screener returned {data.get('screener_count', '?')} candidates. "
-        f"{n} cleared every gate" + (f" ({data['rejected_count']} rejected)." if data.get("rejected_count") else "."),
-        ss["Body"]))
+    flow.extend(_all_candidates_block(data, ss))
 
-    if not data.get("candidates"):
-        flow.append(Spacer(1, 6))
+    flow.append(PageBreak())
+    flow.extend(_top10_table(data, ss))
+
+    verdicts = data.get("verdicts", [])
+    flow.append(Spacer(1, 14))
+    flow.append(Paragraph("Топ-3 ұсыныс — түпкілікті вердикт", ss["H1"]))
+    if not verdicts:
         flow.append(Paragraph(
-            "No candidates passed every gate today. Never forcing a setup out of nothing — "
-            "this is a watchlist-only day.", ss["Body"]))
+            "Бүгін барлық сүзгіден толық өткен кандидат жоқ. "
+            "Жоқ жерден сетап жасамаймыз — бұл бақылау күні.", ss["Body"]))
     else:
-        flow.append(PageBreak())
-        flow.append(Paragraph("Candidates", ss["H1"]))
-        for c in data["candidates"]:
-            flow.extend(_candidate_block(c, ss))
-
-    if data.get("best_pick"):
-        flow.append(Spacer(1, 10))
-        bp = data["best_pick"]
-        flow.append(Paragraph(f"Best setup today: {bp.get('ticker', '?')}", ss["H2"]))
-        flow.append(Paragraph(bp.get("reasoning", ""), ss["Body"]))
+        for v in verdicts:
+            flow.extend(_verdict_block(v, ss))
 
     flow.append(Spacer(1, 16))
     flow.append(Paragraph(
         data.get("footer_note",
-                  "Screener is a filter, not a signal — decisions are manual. "
-                  "Confirm halal compliance yourself. Educational tool, not financial advice."),
+                  "Скринер — фильтр, шешім — қолмен. Капитал — бірінші орында. "
+                  "Бұл білім беру құралы, қаржылық кеңес емес."),
         ss["Small"]))
 
     doc.build(flow)
