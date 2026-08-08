@@ -1,13 +1,14 @@
 """Push a completed scan's results (the same JSON schema documented in
-agent/pdf_report.py) into a Postgres database on Railway, for the Next.js
-dashboard on Vercel to read.
+agent/pdf_report.py) directly into Postgres -- for interactive/manual use
+from a session with real Postgres connectivity (like the one that built this).
 
-This is deliberately decoupled from the claude.ai routine and from chart
-grading -- it's a plain delivery step, run by hand after an analysis session
-(interactive, like pdf_report.py / telegram_send.py already are), not part of
-any automated re-grading. It resolves each ticker's TradingView symbol
-(EXCHANGE:TICKER) via yfinance's exchange field so the dashboard can embed the
-real TradingView widget without guessing.
+The automated claude.ai routine does NOT use this: its sandbox can reach
+normal HTTPS but not raw Postgres wire protocol on a non-standard port, so it
+instead annotates its JSON with agent/tv_symbol.py and POSTs it to the web
+app's own /api/ingest endpoint, which does the equivalent write server-side
+(see web/app/api/ingest/route.ts and strategy/ROUTINE_PROMPT.md). This module
+stays useful for manual pushes and backfills from an environment that *can*
+reach Postgres directly.
 
 Usage:
     DATABASE_URL=postgresql://... python -m agent.push_to_db output/results_2026-08-08.json
@@ -20,7 +21,8 @@ from pathlib import Path
 
 import psycopg2
 import psycopg2.extras
-import yfinance as yf
+
+from agent.tv_symbol import resolve_tv_symbol
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs (
@@ -68,34 +70,6 @@ CREATE INDEX IF NOT EXISTS idx_all_candidates_run ON all_candidates(run_id);
 CREATE INDEX IF NOT EXISTS idx_top10_run ON top10(run_id);
 CREATE INDEX IF NOT EXISTS idx_verdicts_run ON verdicts(run_id);
 """
-
-# yfinance `exchange` field -> TradingView exchange prefix. Our screener's
-# market-cap floor (>$2B) means this small, hand-verified set covers the
-# realistic universe; an unmapped code falls back to a bare ticker (still
-# usually resolves correctly in TradingView's own widget, just less certain).
-EXCHANGE_MAP = {
-    "NMS": "NASDAQ", "NGM": "NASDAQ", "NCM": "NASDAQ",  # Nasdaq Global Select/Global/Capital
-    "NYQ": "NYSE",
-    "ASE": "AMEX",   # NYSE American
-    "PCX": "AMEX",   # NYSE Arca
-}
-
-_tv_cache: dict[str, str] = {}
-
-
-def resolve_tv_symbol(ticker: str) -> str:
-    if ticker in _tv_cache:
-        return _tv_cache[ticker]
-    try:
-        info = yf.Ticker(ticker).get_info()
-        exch = info.get("exchange", "")
-        prefix = EXCHANGE_MAP.get(exch)
-        symbol = f"{prefix}:{ticker}" if prefix else ticker
-    except Exception:
-        symbol = ticker
-    _tv_cache[ticker] = symbol
-    return symbol
-
 
 def connect(database_url: str | None = None):
     url = database_url or os.environ["DATABASE_URL"]

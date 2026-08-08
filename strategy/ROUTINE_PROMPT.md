@@ -74,19 +74,32 @@ zero-candidate day:
 
 4. Push the same results into the live database that backs the web dashboard
    (https://aplus-swing-trading.vercel.app/ — a separate Next.js app, not part
-   of this routine). Same situation as the Telegram credentials: no secrets
-   mechanism exists here, so DATABASE_URL is provided directly in this
-   routine's live prompt (not committed to the repo) — it'll appear after this
-   file's content. It's the repo owner's own Supabase Postgres instance,
-   already tested end-to-end in the setup conversation. Pass it inline to this
-   one command only (same reason as before — shell env doesn't persist across
-   tool calls):
+   of this routine). This sandbox can reach normal HTTPS but NOT raw Postgres
+   wire protocol on a non-standard port (confirmed by direct testing — it's a
+   protocol-level block in the egress proxy, not a missing-host problem, so
+   don't waste time trying to open a direct DB connection here). Instead:
 
-   DATABASE_URL=<value> python -m agent.push_to_db output/results_<date>.json
+   a. Annotate the results with each ticker's TradingView symbol (this
+      sandbox's yfinance access works fine, already proven by the scan itself):
 
-   This script upserts by date (safe to re-run the same day without
-   duplicating) and resolves each ticker's TradingView symbol itself via
-   yfinance — you don't need to compute that. Nothing to hide here either.
+      python -m agent.tv_symbol output/results_<date>.json
+
+   b. POST the annotated file to the dashboard's ingest endpoint. Same
+      situation as the Telegram credentials: no secrets mechanism exists here,
+      so INGEST_SECRET is provided directly in this routine's live prompt (not
+      committed to the repo) — it'll appear after this file's content. It's a
+      dedicated write-only token for this one endpoint (not the database
+      password itself), already tested end-to-end in the setup conversation:
+
+      curl -sf -X POST https://aplus-swing-trading.vercel.app/api/ingest \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer <INGEST_SECRET value>" \
+        --data-binary @output/results_<date>.json
+
+   The endpoint upserts by date (safe to re-run the same day without
+   duplicating). Nothing to hide here either — the token can only write
+   structured scan data through this one validated endpoint, it can't reach
+   the database directly or do anything else.
 
 5. Confirm in your final message that both the PDF/Telegram send and the
    database push succeeded (or explain why not, e.g. Telegram rejected it or
