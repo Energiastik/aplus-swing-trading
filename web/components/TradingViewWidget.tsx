@@ -12,15 +12,36 @@ import { useEffect, useRef } from "react";
  * Each instance gets its own container id and injects its own copy of the
  * embed script -- TradingView's widget is designed to be used this way
  * (independent per-container), so multiple charts on one page don't collide.
+ *
+ * Known limits of this free embed (verified empirically, not documented
+ * anywhere public): intraday `interval` caps at "120" (2h) -- "240"/"4H"/"180"
+ * all silently snap back to 2h instead of erroring, so a true 4H chart isn't
+ * achievable with this widget. `interval` + `range` together also only work
+ * reliably if `interval` is left at daily-or-coarser; for intraday intervals
+ * set both explicitly as done here.
  */
+export interface TVConfigOverrides {
+  interval?: string;
+  range?: string;
+  studies?: unknown[];
+  compareSymbols?: { symbol: string; position?: string }[];
+  percentage?: boolean;
+  withdateranges?: boolean;
+  hide_top_toolbar?: boolean;
+  hide_legend?: boolean;
+}
+
 export default function TradingViewWidget({
   symbol,
   height = 540,
+  config,
 }: {
   symbol: string;
   height?: number;
+  config?: TVConfigOverrides;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const configKey = JSON.stringify(config ?? {});
 
   useEffect(() => {
     const container = containerRef.current;
@@ -56,9 +77,11 @@ export default function TradingViewWidget({
       hide_legend: false,
       studies: ["MAExp@tv-basicstudies", "Volume@tv-basicstudies"],
       support_host: "https://www.tradingview.com",
+      ...config,
     });
     container.appendChild(script);
-  }, [symbol]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol, configKey]);
 
   // TradingView's script restructures whatever's inside .tradingview-widget-container
   // once it mounts (it does not respect an inline height left on that element) --

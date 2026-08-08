@@ -1,6 +1,9 @@
 import { getLatestRun } from "@/lib/db";
-import { GradeBadge, StageBadge, RegimeModeBadge } from "@/components/Badges";
+import { RegimeModeBadge } from "@/components/Badges";
 import TradingViewWidget from "@/components/TradingViewWidget";
+import MarketOverview from "@/components/MarketOverview";
+import SectorComparison from "@/components/SectorComparison";
+import Top10Table from "@/components/Top10Table";
 
 export const revalidate = 300; // re-render at most every 5 min; data changes ~daily
 
@@ -80,6 +83,8 @@ export default async function DashboardPage() {
         </div>
       </section>
 
+      <MarketOverview />
+
       {/* Sector rotation */}
       <section className="panel">
         <h2>Ротация секторов</h2>
@@ -122,6 +127,8 @@ export default async function DashboardPage() {
         )}
       </section>
 
+      <SectorComparison />
+
       {/* All candidates */}
       <section className="panel">
         <h2>Все кандидаты, прошедшие скринер ({run.all_candidates.length})</h2>
@@ -142,44 +149,7 @@ export default async function DashboardPage() {
       {/* Top 10 */}
       <section className="panel">
         <h2>Топ-10 кандидатов</h2>
-        {run.top10.length === 0 ? (
-          <p className="empty-state">Недостаточно кандидатов для топ-10.</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Тикер</th>
-                <th>Балл</th>
-                <th>График</th>
-                <th>Стадия</th>
-                <th>R/R</th>
-                <th>До отчёта</th>
-                <th>Пояснение</th>
-              </tr>
-            </thead>
-            <tbody>
-              {run.top10.map((c) => (
-                <tr key={c.ticker}>
-                  <td>{c.rank}</td>
-                  <td>
-                    <b>{c.ticker}</b>
-                  </td>
-                  <td>{c.composite_score ?? "—"}</td>
-                  <td>
-                    <GradeBadge grade={c.chart_grade} />
-                  </td>
-                  <td>
-                    <StageBadge stage={c.sector_stage} />
-                  </td>
-                  <td>{c.rr ?? "—"}</td>
-                  <td>{c.earnings_days ?? "—"}</td>
-                  <td style={{ maxWidth: 340 }}>{c.explanation}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <Top10Table rows={run.top10} />
       </section>
 
       {/* Verdicts */}
