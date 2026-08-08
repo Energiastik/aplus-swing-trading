@@ -15,7 +15,7 @@ import { useEffect, useRef } from "react";
  */
 export default function TradingViewWidget({
   symbol,
-  height = 900,
+  height = 540,
 }: {
   symbol: string;
   height?: number;
