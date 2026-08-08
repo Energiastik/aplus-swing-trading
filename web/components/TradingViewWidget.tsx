@@ -15,7 +15,7 @@ import { useEffect, useRef } from "react";
  */
 export default function TradingViewWidget({
   symbol,
-  height = 420,
+  height = 600,
 }: {
   symbol: string;
   height?: number;
@@ -39,7 +39,7 @@ export default function TradingViewWidget({
     script.innerHTML = JSON.stringify({
       autosize: true,
       symbol,
-      interval: "D",
+      range: "6M",
       timezone: "Asia/Almaty",
       theme: "dark",
       style: "1",
@@ -48,7 +48,7 @@ export default function TradingViewWidget({
       gridColor: "rgba(255, 255, 255, 0.06)",
       hide_top_toolbar: false,
       hide_legend: false,
-      studies: ["MAExp@tv-basicstudies", "MAExp@tv-basicstudies", "Volume@tv-basicstudies"],
+      studies: ["MAExp@tv-basicstudies", "Volume@tv-basicstudies"],
       support_host: "https://www.tradingview.com",
     });
     container.appendChild(script);
