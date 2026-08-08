@@ -72,9 +72,27 @@ zero-candidate day:
    this one pre-authorized chat; it can't read anything or reach any other
    system, so there's no reason to suppress it.
 
-4. Confirm in your final message that the PDF was sent (or explain why not,
-   e.g. Telegram rejected it) — that confirmation is what shows up as the
-   routine's run result.
+4. Push the same results into the live database that backs the web dashboard
+   (https://aplus-swing-trading.vercel.app/ — a separate Next.js app, not part
+   of this routine). Same situation as the Telegram credentials: no secrets
+   mechanism exists here, so DATABASE_URL is provided directly in this
+   routine's live prompt (not committed to the repo) — it'll appear after this
+   file's content. It's the repo owner's own Supabase Postgres instance,
+   already tested end-to-end in the setup conversation. Pass it inline to this
+   one command only (same reason as before — shell env doesn't persist across
+   tool calls):
+
+   DATABASE_URL=<value> python -m agent.push_to_db output/results_<date>.json
+
+   This script upserts by date (safe to re-run the same day without
+   duplicating) and resolves each ticker's TradingView symbol itself via
+   yfinance — you don't need to compute that. Nothing to hide here either.
+
+5. Confirm in your final message that both the PDF/Telegram send and the
+   database push succeeded (or explain why not, e.g. Telegram rejected it or
+   the database was unreachable) — that confirmation is what shows up as the
+   routine's run result. A failure in step 4 shouldn't be treated as
+   invalidating steps 1-3, which already completed independently.
 
 If the screener, sector-rotation pipeline, or any data source is unreachable,
 say so plainly in the PDF's footer_note and still send whatever you were able
