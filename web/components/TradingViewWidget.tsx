@@ -15,7 +15,7 @@ import { useEffect, useRef } from "react";
  */
 export default function TradingViewWidget({
   symbol,
-  height = 600,
+  height = 900,
 }: {
   symbol: string;
   height?: number;
@@ -27,8 +27,14 @@ export default function TradingViewWidget({
     if (!container) return;
     container.innerHTML = "";
 
+    // TradingView's embed script targets this inner div directly and sizes
+    // its iframe off of *it*, not the outer container -- without an explicit
+    // height here it collapses to auto (effectively a small default) no
+    // matter how tall the outer container is, silently ignoring "autosize".
     const widgetDiv = document.createElement("div");
     widgetDiv.className = "tradingview-widget-container__widget";
+    widgetDiv.style.height = "100%";
+    widgetDiv.style.width = "100%";
     container.appendChild(widgetDiv);
 
     const script = document.createElement("script");
@@ -54,11 +60,17 @@ export default function TradingViewWidget({
     container.appendChild(script);
   }, [symbol]);
 
+  // TradingView's script restructures whatever's inside .tradingview-widget-container
+  // once it mounts (it does not respect an inline height left on that element) --
+  // so the actual height is enforced on this plain outer div instead, which their
+  // script has no reason to touch.
   return (
-    <div
-      className="tradingview-widget-container"
-      ref={containerRef}
-      style={{ height, width: "100%" }}
-    />
+    <div style={{ height, width: "100%" }}>
+      <div
+        className="tradingview-widget-container"
+        ref={containerRef}
+        style={{ height: "100%", width: "100%" }}
+      />
+    </div>
   );
 }
