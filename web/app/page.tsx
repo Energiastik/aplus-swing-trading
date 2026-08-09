@@ -4,6 +4,7 @@ import TradingViewWidget from "@/components/TradingViewWidget";
 import MarketOverview from "@/components/MarketOverview";
 import SectorComparison from "@/components/SectorComparison";
 import Top10Table from "@/components/Top10Table";
+import { StageHeader, StageConnector } from "@/components/FunnelStage";
 
 export const revalidate = 300; // re-render at most every 5 min; data changes ~daily
 
@@ -64,6 +65,7 @@ export default async function DashboardPage() {
         потери капитала.
       </div>
 
+      <StageHeader n={1} title="Здоровье рынка" subtitle="Общий режим и готовность рисковать" />
       {/* Regime / market health */}
       <section className="panel">
         <h2>
@@ -93,8 +95,22 @@ export default async function DashboardPage() {
         </div>
       </section>
 
+      <div className="stage-connector-wrap">
+        <StageConnector />
+      </div>
+
+      <StageHeader n={2} title="Основные индексы" subtitle="Куда идёт широкий рынок" />
       <MarketOverview />
 
+      <div className="stage-connector-wrap">
+        <StageConnector />
+      </div>
+
+      <StageHeader
+        n={3}
+        title="Секторы: идентификация и ротация"
+        subtitle="Какие сектора набирают силу, какие теряют"
+      />
       {/* Sector rotation */}
       <section className="panel">
         <h2>Ротация секторов</h2>
@@ -139,6 +155,11 @@ export default async function DashboardPage() {
 
       <SectorComparison />
 
+      <div className="stage-connector-wrap">
+        <StageConnector />
+      </div>
+
+      <StageHeader n={4} title="Отбор акций" subtitle="От широкого списка к конкретным сделкам" />
       {/* All candidates */}
       <section className="panel">
         <h2>Все кандидаты, прошедшие скринер ({run.all_candidates.length})</h2>

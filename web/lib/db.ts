@@ -39,6 +39,13 @@ export interface CandidateRow {
   sector: string | null;
 }
 
+export interface NewsItem {
+  title?: string;
+  url?: string;
+  published_at?: string;
+  summary?: string;
+}
+
 export interface Top10Row {
   rank: number;
   ticker: string;
@@ -49,6 +56,15 @@ export interface Top10Row {
   rr: string | null;
   earnings_days: string | null;
   explanation: string | null;
+  pe_ratio: number | null;
+  forward_pe: number | null;
+  revenue_usd: number | null;
+  revenue_growth: number | null;
+  eps: number | null;
+  eps_growth: number | null;
+  debt_to_equity: number | null;
+  business_summary: string | null;
+  news: NewsItem[] | null;
 }
 
 export interface VerdictRow {
@@ -102,7 +118,9 @@ export async function getLatestRun(): Promise<RunData | null> {
     ),
     pool.query(
       `SELECT rank, ticker, tv_symbol, composite_score, chart_grade, sector_stage,
-              rr, earnings_days, explanation FROM top10
+              rr, earnings_days, explanation, pe_ratio, forward_pe, revenue_usd,
+              revenue_growth, eps, eps_growth, debt_to_equity, business_summary, news
+       FROM top10
        WHERE run_id = $1 ORDER BY rank`,
       [run.id]
     ),

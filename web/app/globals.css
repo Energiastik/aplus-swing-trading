@@ -279,6 +279,129 @@ tr:hover td {
   margin-bottom: 1.5rem;
 }
 
+.funnel-stage {
+  transition: max-width 0.2s ease;
+}
+
+.funnel-stage .panel {
+  margin-top: 0;
+}
+
+.funnel-stage + .stage-connector-wrap {
+  margin: 0.4rem 0;
+}
+
+.stage-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 2rem 0 1rem;
+}
+
+.stage-badge {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), #f4e5a8 60%, var(--gold));
+  color: #0a1628;
+  font-weight: 800;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 4px var(--gold-soft);
+}
+
+.stage-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.stage-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.stage-connector-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.modal-tab {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.5rem 0.9rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.modal-tab:hover {
+  color: var(--text-secondary);
+}
+
+.modal-tab-active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+.news-item {
+  border-bottom: 1px solid var(--border-soft);
+  padding: 0.85rem 0;
+}
+
+.news-item:last-child {
+  border-bottom: none;
+}
+
+.news-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.news-item-header a {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.news-item-header a:hover {
+  color: var(--gold);
+  text-decoration: underline;
+}
+
+.news-item-date {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.news-item-summary {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 .disclaimer-banner {
   border: 1px solid rgba(250, 178, 25, 0.35);
   background: rgba(250, 178, 25, 0.08);

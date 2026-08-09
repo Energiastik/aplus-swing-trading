@@ -6,7 +6,7 @@ import ChartModal from "./ChartModal";
 import type { Top10Row } from "@/lib/db";
 
 export default function Top10Table({ rows }: { rows: Top10Row[] }) {
-  const [open, setOpen] = useState<{ ticker: string; tvSymbol: string } | null>(null);
+  const [open, setOpen] = useState<Top10Row | null>(null);
 
   if (rows.length === 0) {
     return <p className="empty-state">Недостаточно кандидатов для топ-10.</p>;
@@ -47,9 +47,7 @@ export default function Top10Table({ rows }: { rows: Top10Row[] }) {
               <td style={{ maxWidth: 320 }}>{c.explanation}</td>
               <td>
                 <button
-                  onClick={() =>
-                    setOpen({ ticker: c.ticker, tvSymbol: c.tv_symbol || c.ticker })
-                  }
+                  onClick={() => setOpen(c)}
                   aria-label={`График ${c.ticker}`}
                   title={`Показать график ${c.ticker}`}
                   style={{
@@ -71,13 +69,7 @@ export default function Top10Table({ rows }: { rows: Top10Row[] }) {
           ))}
         </tbody>
       </table>
-      {open && (
-        <ChartModal
-          ticker={open.ticker}
-          tvSymbol={open.tvSymbol}
-          onClose={() => setOpen(null)}
-        />
-      )}
+      {open && <ChartModal row={open} onClose={() => setOpen(null)} />}
     </>
   );
 }

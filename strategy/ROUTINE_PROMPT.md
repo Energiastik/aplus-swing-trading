@@ -79,8 +79,12 @@ zero-candidate day:
    protocol-level block in the egress proxy, not a missing-host problem, so
    don't waste time trying to open a direct DB connection here). Instead:
 
-   a. Annotate the results with each ticker's TradingView symbol (this
-      sandbox's yfinance access works fine, already proven by the scan itself):
+   a. Annotate the results (this sandbox's yfinance access works fine,
+      already proven by the scan itself) with each ticker's TradingView
+      symbol, and -- for top10 entries only -- fundamentals (P/E, forward
+      P/E, revenue+growth, EPS+growth, debt/equity, business summary) and up
+      to 3 recent news items. One command does all of it, nothing else to
+      fetch yourself:
 
       python -m agent.tv_symbol output/results_<date>.json
 

@@ -49,6 +49,15 @@ CREATE TABLE IF NOT EXISTS top10 (
     rank INT, ticker TEXT, tv_symbol TEXT, composite_score REAL, chart_grade TEXT,
     sector_stage TEXT, rr TEXT, earnings_days TEXT, explanation TEXT
 );
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS pe_ratio REAL;
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS forward_pe REAL;
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS revenue_usd REAL;
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS revenue_growth REAL;
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS eps REAL;
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS eps_growth REAL;
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS debt_to_equity REAL;
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS business_summary TEXT;
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS news JSONB;
 CREATE TABLE IF NOT EXISTS verdicts (
     id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(id) ON DELETE CASCADE,
@@ -94,6 +103,15 @@ interface IngestBody {
     rr?: string;
     earnings_days?: string;
     explanation?: string;
+    pe_ratio?: number;
+    forward_pe?: number;
+    revenue_usd?: number;
+    revenue_growth?: number;
+    eps?: number;
+    eps_growth?: number;
+    debt_to_equity?: number;
+    business_summary?: string;
+    news?: Array<{ title?: string; url?: string; published_at?: string; summary?: string }>;
   }>;
   verdicts?: Array<{
     ticker?: string;
@@ -193,12 +211,18 @@ export async function POST(req: NextRequest) {
     for (const c of body.top10 ?? []) {
       await client.query(
         `INSERT INTO top10 (run_id, rank, ticker, tv_symbol, composite_score, chart_grade,
-                             sector_stage, rr, earnings_days, explanation)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                             sector_stage, rr, earnings_days, explanation, pe_ratio, forward_pe,
+                             revenue_usd, revenue_growth, eps, eps_growth, debt_to_equity,
+                             business_summary, news)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
         [
           runId, rank++, c.ticker ?? null, c.tv_symbol ?? c.ticker ?? null,
           c.composite_score ?? null, c.chart_grade ?? null, c.sector_stage ?? null,
           c.rr ?? null, c.earnings_days ?? null, c.explanation ?? null,
+          c.pe_ratio ?? null, c.forward_pe ?? null, c.revenue_usd ?? null,
+          c.revenue_growth ?? null, c.eps ?? null, c.eps_growth ?? null,
+          c.debt_to_equity ?? null, c.business_summary ?? null,
+          c.news ? JSON.stringify(c.news) : null,
         ]
       );
     }
