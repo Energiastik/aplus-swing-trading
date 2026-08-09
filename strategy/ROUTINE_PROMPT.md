@@ -88,6 +88,16 @@ zero-candidate day:
 
       python -m agent.tv_symbol output/results_<date>.json
 
+      This adds business_summary and news[].title/summary in ENGLISH (that's
+      what yfinance returns natively) -- yfinance can't translate, so you
+      must: open output/results_<date>.json, translate every top10[].
+      business_summary and every top10[].news[].title/summary into Russian
+      (same rule as everything else in this file — company/ticker names,
+      dollar figures, and dates stay as-is; translate the prose), and save
+      it back before the next step. Don't skip this even though it wasn't
+      needed for the fields in step 1 — those come from your own analysis
+      already in Russian, these come from yfinance already in English.
+
    b. POST the annotated file to the dashboard's ingest endpoint. Same
       situation as the Telegram credentials: no secrets mechanism exists here,
       so INGEST_SECRET is provided directly in this routine's live prompt (not
