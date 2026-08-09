@@ -19,6 +19,13 @@ import { useEffect, useRef } from "react";
  * achievable with this widget. `interval` + `range` together also only work
  * reliably if `interval` is left at daily-or-coarser; for intraday intervals
  * set both explicitly as done here.
+ *
+ * hide_side_toolbar defaults to false (shown): confirmed via a standalone
+ * render that this reveals TradingView's real left-edge drawing tools panel
+ * (trend line, horizontal line, and more below the fold) -- it's the actual
+ * drawing toolbar, not just decoration. Pass hide_side_toolbar: true on
+ * narrow/compact instances (e.g. the market-overview tiles) where that
+ * ~32px-wide panel would crowd an already-tight chart.
  */
 export interface TVConfigOverrides {
   interval?: string;
@@ -28,6 +35,7 @@ export interface TVConfigOverrides {
   percentage?: boolean;
   withdateranges?: boolean;
   hide_top_toolbar?: boolean;
+  hide_side_toolbar?: boolean;
   hide_legend?: boolean;
 }
 
@@ -74,6 +82,7 @@ export default function TradingViewWidget({
       backgroundColor: "rgba(10, 22, 40, 1)",
       gridColor: "rgba(255, 255, 255, 0.06)",
       hide_top_toolbar: false,
+      hide_side_toolbar: false,
       hide_legend: false,
       studies: ["MAExp@tv-basicstudies", "Volume@tv-basicstudies"],
       support_host: "https://www.tradingview.com",

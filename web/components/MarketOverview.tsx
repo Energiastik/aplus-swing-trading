@@ -40,7 +40,7 @@ export default function MarketOverview() {
             <TradingViewWidget
               symbol={idx.symbol}
               height={320}
-              config={{ interval: "120", range: "6M" }}
+              config={{ interval: "120", range: "6M", hide_side_toolbar: true }}
             />
           </div>
         ))}
