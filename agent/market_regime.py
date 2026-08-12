@@ -29,7 +29,7 @@ def assess() -> Regime:
     # 1. SPY > EMA200
     spy_ema200 = ema(spy["Close"], 200).iloc[-1]
     r.spy_close = float(spy["Close"].iloc[-1])
-    c1 = r.spy_close > spy_ema200
+    c1 = bool(r.spy_close > spy_ema200)
     r.checks["SPY > EMA200"] = c1
 
     # 2. QQQ new 4-week high within last 5 sessions

@@ -15,6 +15,8 @@ import json
 import sys
 from pathlib import Path
 
+import yf_compat
+yf_compat.patch()
 import yfinance as yf
 
 # yfinance `exchange` field -> TradingView exchange prefix. Our screener's
