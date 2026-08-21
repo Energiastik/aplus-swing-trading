@@ -48,7 +48,26 @@ def t_technical_read(ticker: str) -> str:
         "dist_to_pivot_pct": t.dist_to_pivot_pct, "extended": t.extended,
         "rs_weighted_return": None if t.rs_raw != t.rs_raw else round(t.rs_raw, 3),
         "suggested_entry": e, "suggested_stop": s, "suggested_target": tg,
+        "rally_low": t.rally_low, "fib_382": t.fib_382, "fib_500": t.fib_500,
+        "fib_618": t.fib_618, "near_fib_level": t.near_fib_level,
+        "near_fib_dist_pct": t.near_fib_dist_pct,
+        "vwap_anchor": t.vwap_anchor, "vwap_anchor_date": t.vwap_anchor_date,
+        "dist_to_vwap_pct": t.dist_to_vwap_pct,
+        "liquidity_sweep": t.liquidity_sweep, "liquidity_sweep_low": t.liquidity_sweep_low,
         "flags": t.flags})
+
+
+def t_confluence_count(ticker: str, entry: float) -> str:
+    """How many independent support/resistance signals (EMA21/50, Fibonacci levels,
+    anchored VWAP, liquidity-sweep reclaim level) sit within ~2% of a proposed entry
+    price. Call after you've settled on a real entry from the chart, not before."""
+    df = data.history(ticker, period="2y")
+    if df.empty or len(df) < 120:
+        return json.dumps({"error": f"no data for {ticker}"})
+    t = technicals.read(df)
+    count, hits = technicals.confluence_count(t, entry)
+    return json.dumps({"ticker": ticker, "entry": entry, "confluence_count": count,
+                       "signals": hits})
 
 
 def t_render_chart(ticker: str) -> str:

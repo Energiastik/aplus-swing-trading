@@ -26,14 +26,22 @@ _patched = False
 
 
 def patch() -> None:
+    """No-ops (instead of raising) when the installed yfinance's internals don't
+    match what this patch expects -- e.g. a different yfinance version on a local
+    machine, where the sandbox's specific TLS/proxy issue doesn't apply anyway and
+    plain yfinance already works. Only the cloud sandbox actually needs this."""
     global _patched
     if _patched:
         return
-    import yfinance._http as _http
-    import yfinance.data as _data
-    import yfinance.base as _base
-    import yfinance.multi as _multi
-    import yfinance.scrapers.history as _history
+    try:
+        import yfinance._http as _http
+        import yfinance.data as _data
+        import yfinance.base as _base
+        import yfinance.multi as _multi
+        import yfinance.scrapers.history as _history
+    except (ImportError, AttributeError):
+        _patched = True  # don't retry every call; this yfinance version just differs
+        return
 
     def _new_session():
         if _http.HAS_CURL_CFFI:

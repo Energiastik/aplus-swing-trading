@@ -61,6 +61,24 @@ class TechRead:
     pullback_low: float | None = None  # recent swing low (structural stop anchor)
     rs_raw: float = np.nan
     rs_pctile: float | None = None
+    # Fibonacci retracement of the rally leg into the pivot (rally_low -> pivot)
+    rally_low: float | None = None
+    fib_382: float | None = None
+    fib_500: float | None = None
+    fib_618: float | None = None
+    near_fib_level: str | None = None   # "38.2%" | "50%" | "61.8%" | None
+    near_fib_dist_pct: float | None = None
+    # Anchored VWAP from the highest-volume day in the lookback (catalyst-day proxy --
+    # a real earnings/news date isn't known inside this pure-OHLCV module, so the
+    # volume spike itself stands in for "the day something happened")
+    vwap_anchor_date: str | None = None
+    vwap_anchor: float | None = None
+    dist_to_vwap_pct: float | None = None
+    # Liquidity sweep: a session whose low undercut the prior N-day swing low but
+    # closed back above it -- a numerically clean stop-hunt-then-reclaim pattern,
+    # distinct from the vision step's (qualitative) equal-highs read.
+    liquidity_sweep: bool = False
+    liquidity_sweep_low: float | None = None
     flags: list = field(default_factory=list)
 
 
@@ -87,12 +105,58 @@ def read(df: pd.DataFrame) -> TechRead:
 
     # Pivot: highest high of last 60 sessions excluding last 3
     win = df.iloc[-63:-3] if len(df) > 63 else df.iloc[:-3]
+    pivot_idx = None
     if not win.empty:
-        t.pivot = float(win["High"].max())
+        pivot_idx = win["High"].idxmax()
+        t.pivot = float(win.loc[pivot_idx, "High"])
         t.dist_to_pivot_pct = (t.price / t.pivot - 1) * 100
         t.extended = t.dist_to_pivot_pct is not None and t.dist_to_pivot_pct > 5
     lows = df["Low"].iloc[-15:]
     t.pullback_low = float(lows.min())
+
+    # Fibonacci retracement of the rally leg (rally_low -> pivot). rally_low is the
+    # lowest low in the 90 sessions before the pivot was set, not just the last 15
+    # days (which may already BE the retracement, not the pre-rally base).
+    if pivot_idx is not None:
+        pos = df.index.get_loc(pivot_idx)
+        pre_pivot = df.iloc[max(0, pos - 90):pos]
+        if not pre_pivot.empty:
+            t.rally_low = float(pre_pivot["Low"].min())
+            fib_range = t.pivot - t.rally_low
+            if fib_range > 0:
+                t.fib_382 = t.pivot - 0.382 * fib_range
+                t.fib_500 = t.pivot - 0.5 * fib_range
+                t.fib_618 = t.pivot - 0.618 * fib_range
+                levels = {"38.2%": t.fib_382, "50%": t.fib_500, "61.8%": t.fib_618}
+                nearest_name, nearest_val = min(levels.items(), key=lambda kv: abs(t.price - kv[1]))
+                nearest_dist = abs(t.price - nearest_val) / t.price * 100
+                if nearest_dist <= 3.0:   # within 3% counts as "at" that level
+                    t.near_fib_level = nearest_name
+                    t.near_fib_dist_pct = round(nearest_dist, 2)
+
+    # Anchored VWAP from the highest-volume day in the last 90 sessions (catalyst-day
+    # proxy). Skipped if that day is stale (>90 sessions back) or volume data is thin.
+    lookback = df.iloc[-90:] if len(df) > 90 else df
+    if not lookback.empty and lookback["Volume"].max() > 0:
+        anchor_idx = lookback["Volume"].idxmax()
+        anchor_pos = df.index.get_loc(anchor_idx)
+        from_anchor = df.iloc[anchor_pos:]
+        typical = (from_anchor["High"] + from_anchor["Low"] + from_anchor["Close"]) / 3
+        vol_sum = from_anchor["Volume"].sum()
+        if vol_sum > 0:
+            t.vwap_anchor = float((typical * from_anchor["Volume"]).sum() / vol_sum)
+            t.vwap_anchor_date = str(anchor_idx.date() if hasattr(anchor_idx, "date") else anchor_idx)
+            t.dist_to_vwap_pct = round((t.price / t.vwap_anchor - 1) * 100, 2)
+
+    # Liquidity sweep: in the last 5 sessions, did price undercut the swing low from
+    # the 20 sessions before that window, then close back above it the same day?
+    if len(df) > 25:
+        prior_swing_low = float(df["Low"].iloc[-25:-5].min())
+        recent = df.iloc[-5:]
+        swept = recent[(recent["Low"] < prior_swing_low) & (recent["Close"] > prior_swing_low)]
+        if not swept.empty:
+            t.liquidity_sweep = True
+            t.liquidity_sweep_low = float(swept["Low"].min())
 
     t.rs_raw = rs_weighted_return(c)
 
@@ -102,7 +166,30 @@ def read(df: pd.DataFrame) -> TechRead:
         t.flags.append("RSI<40 — reduce/avoid longs")
     if t.extended:
         t.flags.append(f"extended {t.dist_to_pivot_pct:.1f}% past pivot — chase risk")
+    if t.liquidity_sweep:
+        t.flags.append(f"liquidity sweep at {t.liquidity_sweep_low:.2f} then reclaimed — stop hunt, not breakdown")
+    if t.near_fib_level:
+        t.flags.append(f"at {t.near_fib_level} Fib retracement ({t.near_fib_dist_pct:.1f}% away)")
     return t
+
+
+def confluence_count(t: TechRead, entry: float) -> tuple[int, list[str]]:
+    """How many independent support/resistance signals line up near `entry`
+    (within ~2%): EMA21, EMA50, a Fib level, the anchored VWAP, and (if present)
+    a liquidity-sweep reclaim level. STRATEGY.md's own confluence rule: single
+    signals mean little, several lining up at one price is a real level."""
+    hits = []
+    def near(level: float | None, name: str) -> None:
+        if level and abs(entry - level) / entry * 100 <= 2.0:
+            hits.append(name)
+    near(t.ema21, "EMA21")
+    near(t.ema50, "EMA50")
+    near(t.fib_382, "Fib 38.2%")
+    near(t.fib_500, "Fib 50%")
+    near(t.fib_618, "Fib 61.8%")
+    near(t.vwap_anchor, "anchored VWAP")
+    near(t.liquidity_sweep_low, "liquidity-sweep reclaim level")
+    return len(hits), hits
 
 
 def stop_and_entry(t: TechRead) -> tuple[float, float, float]:
@@ -129,7 +216,7 @@ def a_plus_score(regime_score: int, sector_beats_spy: bool, t: TechRead,
         ("VDU present", bool(t.vdu or vision.get("vdu"))),
         ("Clear pivot", t.pivot is not None and not t.extended),
         ("Logical stop", True),  # constructed by stop_and_entry rules
-        ("R/R >= 3:1", rr >= 3.0),
+        ("R/R >= 2:1", rr >= 2.0),
         ("Earnings >= 2 weeks away", earnings_days is None or earnings_days >= 14),
     ]
     return sum(ok for _, ok in checks), checks

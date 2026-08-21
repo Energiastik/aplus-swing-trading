@@ -22,8 +22,8 @@ def gates(row: dict, regime_mult: float) -> tuple[bool, str]:
         return False, "below EMA200"
     if row["halal"].status == "FAIL":
         return False, f"halal FAIL: {row['halal'].reasons[0]}"
-    if row["rr"] < 3.0:
-        return False, f"R/R {row['rr']:.1f} < 3.0"
+    if row["rr"] < 2.0:
+        return False, f"R/R {row['rr']:.1f} < 2.0"
     v = row.get("vision") or {}
     if v.get("grade") == "F":
         return False, f"vision F: {v.get('note','')}"
@@ -43,6 +43,10 @@ def rank(rows: list[dict], regime_mult: float, top_n: int = 10) -> tuple[pd.Data
                  + WEIGHTS["vision"] * GRADE_PTS.get(v.get("grade", "C"), 45)
                  + WEIGHTS["aplus"] * (row["aplus"] / 9 * 100)
                  + WEIGHTS["sector"] * (100 if row["sector_top"] else 40))
+        # R/R quality bonus/malus: the hard gate only requires >=2.0, but a 2:1 setup
+        # and a 5:1 setup aren't equal quality. Bounded adjustment, not part of the
+        # weighted average, so it nudges rather than dominates the composite score.
+        score += min(max((row["rr"] - 3.0) * 2.5, -2.5), 7.5)
         row["score"] = round(score, 1)
         kept.append(row)
     kept.sort(key=lambda r: r["score"], reverse=True)

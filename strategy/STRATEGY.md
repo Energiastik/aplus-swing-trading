@@ -7,7 +7,11 @@ agent receives the "Visual Criteria" section as its system prompt context.
 - LONG ONLY. No shorts, no options, no leverage (halal constraint — treated as an edge:
   "bankruptcy is practically impossible without them").
 - Every candidate must pass (or be flagged "review") on the AAOIFI halal screen.
-- Minimum R/R 3:1 on the proposed entry/stop/target. No exceptions.
+- Minimum R/R 2:1 on the proposed entry/stop/target (hard floor, no exceptions below
+  it) — but 2:1–2.9:1 and 3:1+ are NOT equal quality: the composite score and A+
+  checklist both still reward 3:1+ explicitly. Swing trades don't need the old 3:1
+  floor to be worthwhile; a well-confirmed 2:1 near real support is a legitimate
+  setup, just a lower-conviction one than a 3:1+ setup with the same confluence.
 - "Screener is a FILTER, not a SIGNAL" — the agent ranks and recommends; the human decides.
 - No setup? Wait. Never force a setup out of nothing.
 
@@ -56,15 +60,22 @@ Stage 5: halal screen per name.
 - Volume combos: ↑price ↑vol = strong uptrend; ↑price ↓vol = suspect; ↓price ↑vol =
   distribution; ↓price ↓vol = healthy pullback (VDU = entry zone).
 - VDU (Minervini): volume 40–60% below average, right side of a base, tight range ±1–2%.
-- Confluence rule: EMA + Fibonacci 0.5–0.618 + historical level + round number at one
-  point = strong level. Single signals mean little; context is everything.
+- Confluence rule (now computed, not just narrative — `technicals.confluence_count`):
+  EMA21/50, Fibonacci 38.2/50/61.8% of the rally leg into the pivot, the anchored
+  VWAP (from the highest-volume day in the lookback — the real catalyst, whether
+  earnings or news, without needing to know which), and a liquidity-sweep reclaim
+  level are each checked for proximity (within 2%) to the proposed entry. Count the
+  hits. Single signals mean little; 2+ lining up at one price is a real level —
+  weight setups with higher confluence counts accordingly. Historical S/R zones and
+  volume profile (POC/value area) are not implemented yet — still read visually off
+  the chart until they are.
 - Base count: base 2 = best entry; base 3 aggressive only; base 4+ = do not trade.
 
 ## 5. A+ checklist (9 questions — scored per candidate)
 1. Macro/regime score 4–5? 2. Sector ETF beating SPY (4W)? 3. RS ≥ 85?
 4. Recognizable pattern (base / cup&handle / flag / U&R)? 5. VDU present?
 6. Clear pivot/breakout point? 7. Logical stop placement (structure/ATR, not on the EMA
-itself, −2% below reclaimed level)? 8. R/R ≥ 3:1? 9. Earnings ≥ 2 weeks away?
+itself, −2% below reclaimed level)? 8. R/R ≥ 2:1? 9. Earnings ≥ 2 weeks away?
 Scoring: 9/9 full position · 7–8 half · ≤6 no entry (watchlist).
 "Checklist paradox": if it feels 'obviously' A+ before scoring — stop. The worst trades
 feel obvious.
@@ -72,12 +83,29 @@ feel obvious.
 ## 6. Smart Money overlays (Day 4)
 - The only question: WHERE IS THE LIQUIDITY? Markets move to stops.
 - Equal Highs/Lows = stop clusters = stop-hunt risk → breakout там is a CAUTION signal;
-  prefer retest entries over instant breakout chases.
-- Anchored VWAP from a catalyst day: FIRST touch is the strongest entry (15–20% moves);
-  second/third touches decay.
-- Absorption: 2–3× volume with <0.5% price movement + rising OBV = institutions absorbing.
-- Order Blocks / FVG: pullback into a bullish OB = long, stop 2% below zone; invalid if
-  price fully trades through.
+  prefer retest entries over instant breakout chases. (Visual — read off the chart.)
+- **Liquidity sweep (now computed, `technicals.read().liquidity_sweep`)**: a session
+  in the last 5 days whose low undercut the prior 20-day swing low but closed back
+  above it — a real stop-hunt-then-reclaim, not a breakdown. Distinct from the
+  equal-highs check above (which is about a cluster of prior highs/lows, not a single
+  sweep-and-reclaim candle) — both matter, check both.
+- **Anchored VWAP (now computed)**: anchored from the highest-volume day in the last
+  90 sessions as a catalyst-day proxy (works whether the catalyst was earnings, news,
+  or a breakout — the volume spike is the tell). FIRST touch after the anchor is the
+  strongest entry (15–20% moves); second/third touches decay.
+- Absorption: 2–3× volume with <0.5% price movement + rising OBV = institutions
+  absorbing. (Visual — read off the chart.)
+- **Demand zone**: the consolidation/base immediately preceding a strong rally
+  (structurally similar to an Order Block/FVG entry) — a pullback that re-enters this
+  zone is a long setup, stop just below the zone, invalid if price fully trades
+  through it. Not numerically detected yet; the vision step identifies the zone
+  visually from the chart, same as pattern/stage grading.
+- **Options call/put walls (planned, not yet implemented)**: proximity to a strike
+  with unusually concentrated open interest (call OI above price = potential
+  resistance/capped upside; put OI below price = potential support) will be one more
+  confluence input, informational only — thin options liquidity on many mid-cap
+  swing names makes this noisy, never a hard gate. Until agent/options_walls.py
+  exists, don't reference this in analysis — there's no data behind it yet.
 
 ## 7. Risk parameters (attached to every recommendation)
 - Risk per trade 1–1.5% of deposit; shares = (Deposit × Risk%) ÷ (Entry − Stop).

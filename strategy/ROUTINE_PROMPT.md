@@ -36,7 +36,7 @@ zero-candidate day:
    gate — each with ticker/composite_score/chart_grade/sector_stage/rr/
    earnings_days/explanation, so the reader sees the full picture, not just
    survivors), verdicts (0-3 names that genuinely clear every hard gate —
-   EMA200, R/R≥3:1 from real structural levels, chart grade ≠ F, earnings
+   EMA200, R/R≥2:1 from real structural levels, chart grade ≠ F, earnings
    ≥10 trading days out; never pad this to 3, an empty list on a no-setup day
    is correct and expected — each verdict needs entry/stop/target/rr/
    expected_gain_pct plus chart_path pointing at its rendered PNG so the PDF

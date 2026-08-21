@@ -13,10 +13,20 @@ Read strategy/STRATEGY.md fully as the base rulebook, with these standing overri
   don't gate on it, don't mention it except "confirm compliance yourself" in the footer.
 - Goal is a realistic +10%+ move in days-to-a-few-weeks, not months. Every surviving
   candidate must state its expected % gain to target.
-- Minimum R/R 3:1, but computed from REAL structural levels (actual swing low/high,
-  gap-day low, EMA21/50, Fib retracement, prior pivot) — never the blunt capped
-  formula in technicals.stop_and_entry(). Pull actual daily High/Low/Volume and
-  derive entry/stop/target from what the chart is actually doing.
+- Minimum R/R 2:1 (hard floor — below it, exclude regardless of everything else), but
+  2:1–2.9:1 and 3:1+ are NOT equal quality: say which band a setup is in, and prefer
+  3:1+ when two setups are otherwise comparable. Compute R/R from REAL structural
+  levels (actual swing low/high, gap-day low, EMA21/50, Fib retracement, anchored
+  VWAP, prior pivot) — never the blunt capped formula in technicals.stop_and_entry().
+  Pull actual daily High/Low/Volume and derive entry/stop/target from what the chart
+  is actually doing.
+- Use technicals.read()'s confluence fields for every survivor: fib_382/500/618,
+  vwap_anchor (+ vwap_anchor_date, dist_to_vwap_pct), liquidity_sweep (+
+  liquidity_sweep_low), and call technicals.confluence_count(t, entry) once you've
+  settled on a real entry price — report the hit count and which signals lined up
+  (e.g. "entry sits at EMA21 + 38.2% Fib + anchored VWAP — 3 confluent signals").
+  More confluence at entry/stop = a stronger, more defensible level, per STRATEGY.md
+  section 4's confluence rule — this is now computed, not just eyeballed.
 - Earnings must be ≥10 trading days away. Check earnings_days for every survivor
   before it reaches the final table, not after.
 - Never invent a number. Every price/volume/date in the output must trace to a tool
@@ -103,8 +113,9 @@ Run the full scan in this order:
        full picture, not just the names you'd actually enter.
 
     c. TOP ≤3 RECOMMENDATION VERDICTS — the names that genuinely clear every
-       hard gate (EMA200, R/R≥3:1 from real structural levels, chart grade ≠ F,
-       earnings ≥10 trading days out): entry/stop/target · R/R · expected %
+       hard gate (EMA200, R/R≥2:1 from real structural levels, chart grade ≠ F,
+       earnings ≥10 trading days out): entry/stop/target · R/R (and which band,
+       2:1–2.9:1 or 3:1+) · confluence count + which signals · expected %
        gain to target · shares at 1% risk on a $10,000 deposit (state if you
        use a different deposit) · regime-adjusted size · full reasoning. If
        fewer than 3 qualify — including zero — say so plainly and stop there.
