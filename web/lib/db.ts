@@ -67,6 +67,28 @@ export interface Top10Row {
   news: NewsItem[] | null;
 }
 
+export interface ThemeRow {
+  name: string;
+  kind: string | null;
+  etf: string;
+  tv_symbol: string;
+  srs: number | null;
+  d3d: number | null;
+  breadth_pct: number | null;
+  breadth_trend: string | null;
+  ema_stack: string | null;
+  ema_slope: string | null;
+  rel_vol: number | null;
+  vol_trend: string | null;
+  streak_leaders: number | null;
+  avg_streak: number | null;
+  breakouts_20d: number | null;
+  higher_lows: number | null;
+  universe: number | null;
+  accum_ratio: number | null;
+  status: string | null;
+}
+
 export interface VerdictRow {
   ticker: string;
   tv_symbol: string;
@@ -94,6 +116,7 @@ export interface RunData {
   all_candidates: CandidateRow[];
   top10: Top10Row[];
   verdicts: VerdictRow[];
+  theme_rotation: ThemeRow[];
 }
 
 export async function getLatestRun(): Promise<RunData | null> {
@@ -106,7 +129,7 @@ export async function getLatestRun(): Promise<RunData | null> {
   if (runRes.rows.length === 0) return null;
   const run = runRes.rows[0];
 
-  const [sectorRes, candidatesRes, top10Res, verdictsRes] = await Promise.all([
+  const [sectorRes, candidatesRes, top10Res, verdictsRes, themeRes] = await Promise.all([
     pool.query(
       `SELECT rank, etf, sector, w1, w4, w12, weighted FROM sector_table
        WHERE run_id = $1 ORDER BY rank`,
@@ -129,6 +152,13 @@ export async function getLatestRun(): Promise<RunData | null> {
        FROM verdicts WHERE run_id = $1`,
       [run.id]
     ),
+    pool.query(
+      `SELECT name, kind, etf, tv_symbol, srs, d3d, breadth_pct, breadth_trend,
+              ema_stack, ema_slope, rel_vol, vol_trend, streak_leaders, avg_streak,
+              breakouts_20d, higher_lows, universe, accum_ratio, status
+       FROM theme_rotation WHERE run_id = $1 ORDER BY srs DESC NULLS LAST`,
+      [run.id]
+    ),
   ]);
 
   return {
@@ -138,6 +168,7 @@ export async function getLatestRun(): Promise<RunData | null> {
     all_candidates: candidatesRes.rows,
     top10: top10Res.rows,
     verdicts: verdictsRes.rows,
+    theme_rotation: themeRes.rows,
   };
 }
 

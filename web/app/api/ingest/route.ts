@@ -58,6 +58,16 @@ ALTER TABLE top10 ADD COLUMN IF NOT EXISTS eps_growth REAL;
 ALTER TABLE top10 ADD COLUMN IF NOT EXISTS debt_to_equity REAL;
 ALTER TABLE top10 ADD COLUMN IF NOT EXISTS business_summary TEXT;
 ALTER TABLE top10 ADD COLUMN IF NOT EXISTS news JSONB;
+CREATE TABLE IF NOT EXISTS theme_rotation (
+    id SERIAL PRIMARY KEY,
+    run_id INT REFERENCES runs(id) ON DELETE CASCADE,
+    name TEXT, kind TEXT, etf TEXT, tv_symbol TEXT,
+    srs REAL, d3d REAL, breadth_pct REAL, breadth_trend TEXT,
+    ema_stack TEXT, ema_slope TEXT, rel_vol REAL, vol_trend TEXT,
+    streak_leaders INT, avg_streak REAL, breakouts_20d INT, higher_lows INT,
+    universe INT, accum_ratio REAL, status TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_theme_rotation_run ON theme_rotation(run_id);
 CREATE TABLE IF NOT EXISTS verdicts (
     id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(id) ON DELETE CASCADE,
@@ -94,6 +104,27 @@ interface IngestBody {
     weighted?: number;
   }>;
   all_candidates?: Array<{ ticker?: string; sector?: string } | string>;
+  theme_rotation?: Array<{
+    name?: string;
+    kind?: string;
+    etf?: string;
+    tv_symbol?: string;
+    srs?: number;
+    d3d?: number;
+    breadth_pct?: number;
+    breadth_trend?: string;
+    ema_stack?: string;
+    ema_slope?: string;
+    rel_vol?: number;
+    vol_trend?: string;
+    streak_leaders?: number;
+    avg_streak?: number;
+    breakouts_20d?: number;
+    higher_lows?: number;
+    universe?: number;
+    accum_ratio?: number;
+    status?: string;
+  }>;
   top10?: Array<{
     ticker?: string;
     tv_symbol?: string;
@@ -181,7 +212,7 @@ export async function POST(req: NextRequest) {
     );
     const runId = runRes.rows[0].id;
 
-    for (const t of ["sector_table", "all_candidates", "top10", "verdicts"]) {
+    for (const t of ["sector_table", "all_candidates", "top10", "verdicts", "theme_rotation"]) {
       await client.query(`DELETE FROM ${t} WHERE run_id = $1`, [runId]);
     }
 
@@ -223,6 +254,23 @@ export async function POST(req: NextRequest) {
           c.revenue_growth ?? null, c.eps ?? null, c.eps_growth ?? null,
           c.debt_to_equity ?? null, c.business_summary ?? null,
           c.news ? JSON.stringify(c.news) : null,
+        ]
+      );
+    }
+
+    for (const t of body.theme_rotation ?? []) {
+      await client.query(
+        `INSERT INTO theme_rotation (run_id, name, kind, etf, tv_symbol, srs, d3d,
+                                      breadth_pct, breadth_trend, ema_stack, ema_slope,
+                                      rel_vol, vol_trend, streak_leaders, avg_streak,
+                                      breakouts_20d, higher_lows, universe, accum_ratio, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+        [
+          runId, t.name ?? null, t.kind ?? null, t.etf ?? null, t.tv_symbol ?? t.etf ?? null,
+          t.srs ?? null, t.d3d ?? null, t.breadth_pct ?? null, t.breadth_trend ?? null,
+          t.ema_stack ?? null, t.ema_slope ?? null, t.rel_vol ?? null, t.vol_trend ?? null,
+          t.streak_leaders ?? null, t.avg_streak ?? null, t.breakouts_20d ?? null,
+          t.higher_lows ?? null, t.universe ?? null, t.accum_ratio ?? null, t.status ?? null,
         ]
       );
     }

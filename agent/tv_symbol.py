@@ -28,6 +28,9 @@ EXCHANGE_MAP = {
     "NYQ": "NYSE",
     "ASE": "AMEX",   # NYSE American
     "PCX": "AMEX",   # NYSE Arca
+    "BTS": "BATS",   # Cboe BZX (verified empirically -- BATS and CBOE prefixes
+                     # both resolve to the same real instrument in TradingView,
+                     # BATS chosen as the more common convention)
 }
 
 _info_cache: dict[str, dict] = {}
@@ -96,6 +99,9 @@ def annotate_file(results_path: str | Path) -> None:
     for v in data.get("verdicts", []):
         if v.get("ticker"):
             v["tv_symbol"] = resolve_tv_symbol(v["ticker"])
+    for t in data.get("theme_rotation", []):
+        if t.get("etf"):
+            t["tv_symbol"] = resolve_tv_symbol(t["etf"])
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 

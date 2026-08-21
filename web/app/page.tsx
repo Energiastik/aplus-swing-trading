@@ -4,6 +4,7 @@ import TradingViewWidget from "@/components/TradingViewWidget";
 import MarketOverview from "@/components/MarketOverview";
 import SectorComparison from "@/components/SectorComparison";
 import Top10Table from "@/components/Top10Table";
+import ThemeGrid from "@/components/ThemeGrid";
 import { StageHeader, StageConnector } from "@/components/FunnelStage";
 
 export const revalidate = 300; // re-render at most every 5 min; data changes ~daily
@@ -154,6 +155,18 @@ export default async function DashboardPage() {
       </section>
 
       <SectorComparison />
+
+      {/* Theme / sub-theme rotation */}
+      <section className="panel">
+        <h2>Темы и под-темы</h2>
+        <p className="meta-line" style={{ marginTop: "-0.5rem", marginBottom: "1rem" }}>
+          Building/Emerging — набирают силу или разворачиваются после падения (то,
+          что стоит отслеживать). Leading — уже лидируют. Fading/Lagging — теряют
+          силу или отстают. Кликните карточку, чтобы открыть график за 3 месяца и
+          визуально проверить разворот, сопротивление или консолидацию у основания.
+        </p>
+        <ThemeGrid rows={run.theme_rotation} />
+      </section>
 
       <div className="stage-connector-wrap">
         <StageConnector />

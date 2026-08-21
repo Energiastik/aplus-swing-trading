@@ -43,6 +43,16 @@ zero-candidate day:
    can embed it), footer_note. Every field must come from what you actually
    found this run — leave a field out rather than invent it.
 
+   Also include theme_rotation: one entry per row of the
+   sector-rotation/data/report_<date>.csv you already read for the step-2b
+   narrative (all sectors AND all themes, not a filtered subset) with name,
+   kind, etf, srs, d3d, breadth_pct (the CSV's Breadth% column), breadth_trend,
+   ema_stack, ema_slope, rel_vol, vol_trend, streak_leaders (Streak3+),
+   avg_streak, breakouts_20d, higher_lows, universe, accum_ratio, status —
+   these are numbers/short codes straight from the CSV, not narrative, so
+   just carry them over field-for-field (blank CSV cells for non-SPDR themes
+   stay null, don't invent them).
+
    Write EVERY free-text field in Russian: sector_rotation_highlights,
    top10[].explanation, verdicts[].reasoning, footer_note, vix_note. The PDF
    template's own labels/headers are already Russian in code — you're
@@ -80,11 +90,11 @@ zero-candidate day:
    don't waste time trying to open a direct DB connection here). Instead:
 
    a. Annotate the results (this sandbox's yfinance access works fine,
-      already proven by the scan itself) with each ticker's TradingView
-      symbol, and -- for top10 entries only -- fundamentals (P/E, forward
-      P/E, revenue+growth, EPS+growth, debt/equity, business summary) and up
-      to 3 recent news items. One command does all of it, nothing else to
-      fetch yourself:
+      already proven by the scan itself) with each ticker's (and each
+      theme_rotation etf's) TradingView symbol, and -- for top10 entries
+      only -- fundamentals (P/E, forward P/E, revenue+growth, EPS+growth,
+      debt/equity, business summary) and up to 3 recent news items. One
+      command does all of it, nothing else to fetch yourself:
 
       python -m agent.tv_symbol output/results_<date>.json
 

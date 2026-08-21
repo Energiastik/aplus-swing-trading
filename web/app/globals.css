@@ -402,6 +402,57 @@ tr:hover td {
   line-height: 1.5;
 }
 
+.theme-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+}
+
+.theme-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.theme-card-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+}
+
+.theme-card-etf {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+}
+
+.theme-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.theme-card-expand {
+  margin-top: 0.6rem;
+  background: transparent;
+  border: none;
+  color: var(--gold);
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.theme-card-expand:hover {
+  text-decoration: underline;
+}
+
 .disclaimer-banner {
   border: 1px solid rgba(250, 178, 25, 0.35);
   background: rgba(250, 178, 25, 0.08);
