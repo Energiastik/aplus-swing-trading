@@ -36,17 +36,34 @@ def run_finviz(limit: int = 60) -> pd.DataFrame:
     if df is None or df.empty:
         return pd.DataFrame()
     df = df.rename(columns={"Ticker": "ticker", "Sector": "sector",
-                            "Industry": "industry", "Price": "price",
-                            "Volume": "volume"})
+                            "Industry": "industry", "Price": "price"})
     # finvizfinance 1.3.0 scraper bug: the Ticker cell text comes back with its first
     # character duplicated (e.g. "BBRZE" for Braze/BRZE, "AANET" for Arista/ANET).
     # Verified against yfinance company-name lookups — stripping the extra leading
     # char recovers the real symbol in every observed case.
     df["ticker"] = df["ticker"].astype(str).str.slice(1)
-    # Stage 3b: Price × Volume > $10M
-    df["dollar_vol"] = pd.to_numeric(df["price"], errors="coerce") * \
-        pd.to_numeric(df["volume"], errors="coerce")
-    df = df[df["dollar_vol"] > 10_000_000]
+    # Stage 3b: Price x Volume > $10M -- deliberately NOT using this table's own
+    # "Volume" column. That column is Finviz's live/current-session volume, not an
+    # average -- this routine typically runs pre-market (well before the 9:30am ET
+    # open), so it's near-zero noise unrelated to real liquidity (verified: DELL's
+    # real 20-day average volume is ~5.5M/day, but a pre-market scrape showed 7,480
+    # for its "Volume" cell -- three orders of magnitude off, and it would have
+    # silently failed a >$10M dollar-volume check for a genuinely liquid stock).
+    # Recompute from yfinance's real 20-day average volume instead, same approach
+    # run_fallback() below already uses.
+    from . import data
+    tickers = df["ticker"].tolist()
+    hists = data.batch_history(tickers, period="1mo")
+    keep = []
+    for _, row in df.iterrows():
+        h = hists.get(row["ticker"])
+        if h is None or h.empty:
+            continue
+        avg_vol = float(h["Volume"].iloc[-20:].mean())
+        price = pd.to_numeric(row["price"], errors="coerce")
+        if pd.notna(price) and avg_vol * price > 10_000_000:
+            keep.append(row["ticker"])
+    df = df[df["ticker"].isin(keep)]
     return df.head(limit)[["ticker", "sector", "industry", "price"]].reset_index(drop=True)
 
 
