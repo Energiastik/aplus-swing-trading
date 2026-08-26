@@ -63,12 +63,14 @@ Stage 5: halal screen per name.
 - Confluence rule (now computed, not just narrative — `technicals.confluence_count`):
   EMA21/50, Fibonacci 38.2/50/61.8% of the rally leg into the pivot, the anchored
   VWAP (from the highest-volume day in the lookback — the real catalyst, whether
-  earnings or news, without needing to know which), and a liquidity-sweep reclaim
-  level are each checked for proximity (within 2%) to the proposed entry. Count the
-  hits. Single signals mean little; 2+ lining up at one price is a real level —
-  weight setups with higher confluence counts accordingly. Historical S/R zones and
-  volume profile (POC/value area) are not implemented yet — still read visually off
-  the chart until they are.
+  earnings or news, without needing to know which), a liquidity-sweep reclaim level,
+  historical S/R zone clusters (local-extrema pivots, tolerance-merged), and volume-
+  profile POC/VAH/VAL are each checked for proximity (within 2%) to the proposed
+  entry. Count the hits. Single signals mean little; 2+ lining up at one price is a
+  real level — weight setups with higher confluence counts accordingly. All of these
+  are also drawn on the rendered chart (S/R pink/green, Fib yellow, POC/VA cyan,
+  VWAP gold dash-dot) so the vision step can read confluence and room-to-target
+  visually, not just numerically.
 - Base count: base 2 = best entry; base 3 aggressive only; base 4+ = do not trade.
 
 ## 5. A+ checklist (9 questions — scored per candidate)

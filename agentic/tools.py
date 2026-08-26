@@ -54,6 +54,7 @@ def t_technical_read(ticker: str) -> str:
         "vwap_anchor": t.vwap_anchor, "vwap_anchor_date": t.vwap_anchor_date,
         "dist_to_vwap_pct": t.dist_to_vwap_pct,
         "liquidity_sweep": t.liquidity_sweep, "liquidity_sweep_low": t.liquidity_sweep_low,
+        "poc": t.poc, "val": t.val, "vah": t.vah, "sr_zones": t.sr_zones,
         "flags": t.flags})
 
 
@@ -119,7 +120,8 @@ def build_sdk_server():
              "Returns candidate tickers with sector/industry.",
              {"limit": int})(wrap(t_run_screener)),
         tool("technical_read", "Full Day-3 technical read for one ticker: EMA stack, RSI, "
-             "VDU, ATR, pivot, suggested entry/stop/target.",
+             "VDU, ATR, pivot, suggested entry/stop/target, Fibonacci retracement, anchored "
+             "VWAP, liquidity sweep, volume-profile POC/VAH/VAL, historical S/R zones.",
              {"ticker": str})(wrap(t_technical_read)),
         tool("render_chart", "Render daily candlestick PNG with EMA 9/21/50/200 and volume "
              "for a ticker; returns file path. READ the image afterwards to inspect the "

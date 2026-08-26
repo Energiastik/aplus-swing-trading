@@ -40,6 +40,100 @@ def rs_weighted_return(close: pd.Series) -> float:
     return float(sum(w * x for w, x in vals) / wsum)
 
 
+def volume_profile(df: pd.DataFrame, lookback: int = 90, n_bins: int = 40) -> dict:
+    """Volume-at-price histogram over the last `lookback` sessions (default ~90 =
+    the current basing/consolidation regime, not the whole trading history -- a
+    big multi-month winner's older base-building volume would otherwise dominate
+    the profile and put POC nowhere near a current swing entry; see
+    historical_sr_zones() for the longer-term 2y structural view instead). Each
+    day's volume is distributed proportionally across the price bins its High-Low
+    range touched (not just dumped into the close's bin) -- the standard
+    construction. Returns the Point of Control (highest-volume bin) and the Value
+    Area (bins around POC that together hold ~68% of total volume, expanded to
+    whichever adjacent side has more volume each step -- the standard value-area
+    algorithm)."""
+    d = df.iloc[-lookback:] if len(df) > lookback else df
+    if d.empty:
+        return {"poc": None, "val": None, "vah": None, "bins": []}
+    lo, hi = float(d["Low"].min()), float(d["High"].max())
+    if hi <= lo:
+        return {"poc": None, "val": None, "vah": None, "bins": []}
+    edges = np.linspace(lo, hi, n_bins + 1)
+    vol_by_bin = np.zeros(n_bins)
+    for _, row in d.iterrows():
+        rlo, rhi, vol = row["Low"], row["High"], row["Volume"]
+        if rhi <= rlo or vol <= 0:
+            continue
+        lo_bin = max(0, np.searchsorted(edges, rlo, side="right") - 1)
+        hi_bin = min(n_bins - 1, np.searchsorted(edges, rhi, side="right") - 1)
+        span = hi_bin - lo_bin + 1
+        vol_by_bin[lo_bin:hi_bin + 1] += vol / span
+    centers = (edges[:-1] + edges[1:]) / 2
+    total = vol_by_bin.sum()
+    if total <= 0:
+        return {"poc": None, "val": None, "vah": None, "bins": []}
+    poc_i = int(vol_by_bin.argmax())
+    lo_i = hi_i = poc_i
+    covered = vol_by_bin[poc_i]
+    target = total * 0.68
+    while covered < target and (lo_i > 0 or hi_i < n_bins - 1):
+        left = vol_by_bin[lo_i - 1] if lo_i > 0 else -1
+        right = vol_by_bin[hi_i + 1] if hi_i < n_bins - 1 else -1
+        if right >= left:
+            hi_i += 1
+            covered += vol_by_bin[hi_i]
+        else:
+            lo_i -= 1
+            covered += vol_by_bin[lo_i]
+    return {
+        "poc": round(float(centers[poc_i]), 2),
+        "val": round(float(centers[lo_i]), 2),
+        "vah": round(float(centers[hi_i]), 2),
+        "bins": [{"price": round(float(c), 2), "volume": round(float(v), 0)}
+                 for c, v in zip(centers, vol_by_bin)],
+    }
+
+
+def historical_sr_zones(df: pd.DataFrame, lookback: int = 504, window: int = 8,
+                         tolerance_pct: float = 1.5, max_zones: int = 6) -> list[dict]:
+    """Cluster prior local swing highs/lows (a point is a swing if it's the extreme
+    within +/- `window` sessions) into zones -- levels within `tolerance_pct` of each
+    other merge, and how many distinct swing points fall in a zone is its strength
+    (touched more = more real). Returns up to `max_zones` strongest zones, each
+    tagged support/resistance relative to the current price."""
+    d = df.iloc[-lookback:] if len(df) > lookback else df
+    if len(d) < window * 2 + 1:
+        return []
+    price = float(d["Close"].iloc[-1])
+    highs, lows = d["High"].values, d["Low"].values
+    points = []
+    for i in range(window, len(d) - window):
+        seg_h = highs[i - window:i + window + 1]
+        if highs[i] == seg_h.max():
+            points.append(float(highs[i]))
+        seg_l = lows[i - window:i + window + 1]
+        if lows[i] == seg_l.min():
+            points.append(float(lows[i]))
+    if not points:
+        return []
+    points.sort()
+    zones: list[dict] = []
+    cur = [points[0]]
+    for p in points[1:]:
+        if (p - cur[-1]) / cur[-1] * 100 <= tolerance_pct:
+            cur.append(p)
+        else:
+            zones.append(cur)
+            cur = [p]
+    zones.append(cur)
+    out = [{"level": round(sum(z) / len(z), 2), "strength": len(z)} for z in zones]
+    for z in out:
+        z["type"] = "resistance" if z["level"] > price else "support"
+        z["dist_pct"] = round((z["level"] / price - 1) * 100, 2)
+    out.sort(key=lambda z: (-z["strength"], abs(z["dist_pct"])))
+    return out[:max_zones]
+
+
 @dataclass
 class TechRead:
     price: float = 0.0
@@ -79,6 +173,13 @@ class TechRead:
     # distinct from the vision step's (qualitative) equal-highs read.
     liquidity_sweep: bool = False
     liquidity_sweep_low: float | None = None
+    # Volume profile (last 180 sessions) and historical S/R zones (last ~2y, clustered
+    # local swing highs/lows). Both are chart-overlay data as much as scoring inputs --
+    # see agent/chart_vision.py, which now plots them.
+    poc: float | None = None
+    val: float | None = None
+    vah: float | None = None
+    sr_zones: list = field(default_factory=list)
     flags: list = field(default_factory=list)
 
 
@@ -158,6 +259,10 @@ def read(df: pd.DataFrame) -> TechRead:
             t.liquidity_sweep = True
             t.liquidity_sweep_low = float(swept["Low"].min())
 
+    vp = volume_profile(df)
+    t.poc, t.val, t.vah = vp["poc"], vp["val"], vp["vah"]
+    t.sr_zones = historical_sr_zones(df)
+
     t.rs_raw = rs_weighted_return(c)
 
     if not t.above_200:
@@ -170,14 +275,19 @@ def read(df: pd.DataFrame) -> TechRead:
         t.flags.append(f"liquidity sweep at {t.liquidity_sweep_low:.2f} then reclaimed — stop hunt, not breakdown")
     if t.near_fib_level:
         t.flags.append(f"at {t.near_fib_level} Fib retracement ({t.near_fib_dist_pct:.1f}% away)")
+    nearest_res = next((z for z in t.sr_zones if z["type"] == "resistance"), None)
+    if nearest_res and nearest_res["dist_pct"] < 5:
+        t.flags.append(f"historical resistance {nearest_res['dist_pct']:.1f}% away "
+                        f"(touched {nearest_res['strength']}x) — limited room before target")
     return t
 
 
 def confluence_count(t: TechRead, entry: float) -> tuple[int, list[str]]:
     """How many independent support/resistance signals line up near `entry`
-    (within ~2%): EMA21, EMA50, a Fib level, the anchored VWAP, and (if present)
-    a liquidity-sweep reclaim level. STRATEGY.md's own confluence rule: single
-    signals mean little, several lining up at one price is a real level."""
+    (within ~2%): EMA21, EMA50, a Fib level, the anchored VWAP, a liquidity-sweep
+    reclaim level, volume-profile POC/VAH/VAL, and any historical S/R zone.
+    STRATEGY.md's own confluence rule: single signals mean little, several lining
+    up at one price is a real level."""
     hits = []
     def near(level: float | None, name: str) -> None:
         if level and abs(entry - level) / entry * 100 <= 2.0:
@@ -189,6 +299,11 @@ def confluence_count(t: TechRead, entry: float) -> tuple[int, list[str]]:
     near(t.fib_618, "Fib 61.8%")
     near(t.vwap_anchor, "anchored VWAP")
     near(t.liquidity_sweep_low, "liquidity-sweep reclaim level")
+    near(t.poc, "volume profile POC")
+    near(t.vah, "volume profile VAH")
+    near(t.val, "volume profile VAL")
+    for z in t.sr_zones:
+        near(z["level"], f"historical {z['type']} (touched {z['strength']}x)")
     return len(hits), hits
 
 
