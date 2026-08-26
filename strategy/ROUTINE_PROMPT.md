@@ -25,6 +25,16 @@ that file first — same rules, same overrides: no halal gate, real structural
 stops, ≥10-day earnings floor, +10%+ realistic target framing, the granular
 sector-rotation/pipeline.py board read).
 
+If a MARKETDATA_API_TOKEN value appears in this routine's live prompt (same
+no-secrets-mechanism situation as Telegram/INGEST below — it would appear
+after this file's content, not committed anywhere), pass it as the
+`options_token` argument on every t_options_walls / t_confluence_count(...,
+include_options_walls=True) call for the Top ≤3 in DAILY_PROMPT.md's final
+step — it's a tool-call argument here, not a shell env var, because those are
+MCP tool calls inside this session, not standalone `python -m` commands. If no
+token was provided, just omit it — the module falls back to yfinance
+automatically, no error either way.
+
 When the scan is complete, do this final step — don't skip it even on a
 zero-candidate day:
 

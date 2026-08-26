@@ -108,12 +108,16 @@ feel obvious.
   (skips 0–6 day expiries as too thin/stale, prefers 7–45 days out). Informational
   confluence input ONLY, never a hard gate or a size decision — same rule as every
   other confluence signal, and thin liquidity on many mid-cap swing names makes this
-  noisier than SPY/QQQ-level names. Yahoo's open-interest field is occasionally empty
-  across an entire chain (a known gap in the free feed, observed even on SPY/QQQ) —
-  when that happens the module falls back to today's traded volume as a weaker
-  "activity wall" proxy and labels it `source: "volume_fallback"` in the tool output;
-  when even that's empty it reports `source: "unavailable"` rather than invent a
-  level. Call `t_options_walls`/`t_confluence_count(..., include_options_walls=True)`
+  noisier than SPY/QQQ-level names. Primary source is MarketData.app (real open
+  interest, 24h-delayed on the free tier — `MARKETDATA_API_TOKEN` env var, never
+  committed to the repo, same handling as the Telegram token). Falls back to
+  yfinance's own open-interest field if no token is set or the request fails —
+  Yahoo's OI field is itself occasionally empty across an entire chain (a known gap
+  in that free feed, observed even on SPY/QQQ) — and if that's empty too, falls back
+  further to today's traded volume as a weaker "activity wall" proxy, labeled
+  `source: "volume_fallback"` in the tool output; when even that's empty it reports
+  `source: "unavailable"` rather than invent a level. Call
+  `t_options_walls`/`t_confluence_count(..., include_options_walls=True)`
   on final candidates only — this is an options-chain fetch, not free numeric compute,
   so don't call it inside the wide screener funnel. This does NOT mean trading
   options — see Section 0: long-only, no options as an instrument, ever. This is

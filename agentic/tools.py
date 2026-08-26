@@ -58,38 +58,44 @@ def t_technical_read(ticker: str) -> str:
         "flags": t.flags})
 
 
-def t_confluence_count(ticker: str, entry: float, include_options_walls: bool = False) -> str:
+def t_confluence_count(ticker: str, entry: float, include_options_walls: bool = False,
+                        options_token: str = "") -> str:
     """How many independent support/resistance signals (EMA21/50, Fibonacci levels,
     anchored VWAP, liquidity-sweep reclaim level, volume-profile POC/VAH/VAL,
     historical S/R zones) sit within ~2% of a proposed entry price. Call after you've
     settled on a real entry from the chart, not before. Set include_options_walls=True
     to also fold in the call/put wall (adds an options-chain fetch; informational
-    confluence only, per STRATEGY.md -- never a hard gate)."""
+    confluence only, per STRATEGY.md -- never a hard gate). options_token: a
+    MarketData.app API token, if the user provided one this run (no persistent env
+    var in the automated routine -- pass it through explicitly; safe to omit)."""
     df = data.history(ticker, period="2y")
     if df.empty or len(df) < 120:
         return json.dumps({"error": f"no data for {ticker}"})
     t = technicals.read(df)
     walls = None
     if include_options_walls:
-        walls = options_walls.read(ticker, t.price)
+        walls = options_walls.read(ticker, t.price, token=options_token or None)
     count, hits = technicals.confluence_count(t, entry, walls=walls)
     return json.dumps({"ticker": ticker, "entry": entry, "confluence_count": count,
                        "signals": hits})
 
 
-def t_options_walls(ticker: str) -> str:
+def t_options_walls(ticker: str, options_token: str = "") -> str:
     """Options call/put wall read: the strike with the most open interest above price
     (call wall, resistance-ish) and below price (put wall, support-ish) for the nearest
     liquid expiry. Informational/confluence signal only -- never a hard gate, per
     STRATEGY.md section 6. Falls back to today's volume (labeled) when open interest is
-    unavailable, and reports source="unavailable" rather than fabricate a level."""
+    unavailable, and reports source="unavailable" rather than fabricate a level.
+    options_token: a MarketData.app API token, if the user provided one this run (no
+    persistent env var in the automated routine -- pass it through explicitly; safe to
+    omit, falls back to yfinance)."""
     df = data.history(ticker, period="5d")
     if df.empty:
         return json.dumps({"error": f"no data for {ticker}"})
     price = float(df["Close"].iloc[-1])
-    w = options_walls.read(ticker, price)
+    w = options_walls.read(ticker, price, token=options_token or None)
     return json.dumps({
-        "ticker": ticker, "price": price, "source": w.source,
+        "ticker": ticker, "price": price, "source": w.source, "provider": w.provider,
         "expiry": w.expiry, "days_to_expiry": w.days_to_expiry,
         "call_wall": w.call_wall, "call_wall_strength": w.call_wall_strength,
         "dist_to_call_wall_pct": w.dist_to_call_wall_pct,
@@ -153,13 +159,17 @@ def build_sdk_server():
         tool("confluence_count", "How many independent S/R signals (EMA/Fib/VWAP/"
              "liquidity-sweep/POC-VA/historical S-R, plus options walls if requested) "
              "sit within ~2% of a proposed entry price. Call after settling on a real "
-             "entry from the chart.",
-             {"ticker": str, "entry": float, "include_options_walls": bool}
+             "entry from the chart. options_token: MarketData.app API token if the "
+             "user provided one this run, else omit (falls back to yfinance).",
+             {"ticker": str, "entry": float, "include_options_walls": bool,
+              "options_token": str}
              )(wrap(t_confluence_count)),
         tool("options_walls", "Options call/put wall (max open-interest strike above/"
              "below price, nearest liquid expiry). Informational confluence signal "
              "only -- never a hard gate. Falls back to volume (labeled) when open "
-             "interest is unavailable.", {"ticker": str})(wrap(t_options_walls)),
+             "interest is unavailable. options_token: MarketData.app API token if the "
+             "user provided one this run, else omit (falls back to yfinance).",
+             {"ticker": str, "options_token": str})(wrap(t_options_walls)),
         tool("render_chart", "Render daily candlestick PNG with EMA 9/21/50/200 and volume "
              "for a ticker; returns file path. READ the image afterwards to inspect the "
              "chart visually.", {"ticker": str})(wrap(t_render_chart)),
