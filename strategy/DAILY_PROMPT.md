@@ -22,11 +22,19 @@ Read strategy/STRATEGY.md fully as the base rulebook, with these standing overri
   is actually doing.
 - Use technicals.read()'s confluence fields for every survivor: fib_382/500/618,
   vwap_anchor (+ vwap_anchor_date, dist_to_vwap_pct), liquidity_sweep (+
-  liquidity_sweep_low), and call technicals.confluence_count(t, entry) once you've
-  settled on a real entry price — report the hit count and which signals lined up
-  (e.g. "entry sits at EMA21 + 38.2% Fib + anchored VWAP — 3 confluent signals").
-  More confluence at entry/stop = a stronger, more defensible level, per STRATEGY.md
-  section 4's confluence rule — this is now computed, not just eyeballed.
+  liquidity_sweep_low), poc/vah/val (volume profile), sr_zones (historical S/R
+  clusters) — all of these are also drawn on the rendered chart (S/R pink/green, Fib
+  yellow, POC/VA cyan, VWAP gold dash-dot), so read them visually too when grading:
+  is there room to the next resistance/POC before target, or is it capped? Then call
+  technicals.confluence_count(t, entry) once you've settled on a real entry price —
+  report the hit count and which signals lined up (e.g. "entry sits at EMA21 + 38.2%
+  Fib + anchored VWAP — 3 confluent signals"). For the final Top ≤3 only, also call
+  t_options_walls(ticker) and re-run confluence_count with include_options_walls=True
+  — proximity to a call/put wall is one more informational confluence input, never a
+  hard gate (options data is occasionally unavailable; report source honestly, don't
+  invent a wall). More confluence at entry/stop = a stronger, more defensible level,
+  per STRATEGY.md section 4's confluence rule — this is now computed, not just
+  eyeballed.
 - Earnings must be ≥10 trading days away. Check earnings_days for every survivor
   before it reaches the final table, not after.
 - Never invent a number. Every price/volume/date in the output must trace to a tool
@@ -115,7 +123,8 @@ Run the full scan in this order:
     c. TOP ≤3 RECOMMENDATION VERDICTS — the names that genuinely clear every
        hard gate (EMA200, R/R≥2:1 from real structural levels, chart grade ≠ F,
        earnings ≥10 trading days out): entry/stop/target · R/R (and which band,
-       2:1–2.9:1 or 3:1+) · confluence count + which signals · expected %
+       2:1–2.9:1 or 3:1+) · confluence count + which signals (incl. options
+       call/put wall if available) · expected %
        gain to target · shares at 1% risk on a $10,000 deposit (state if you
        use a different deposit) · regime-adjusted size · full reasoning. If
        fewer than 3 qualify — including zero — say so plainly and stop there.

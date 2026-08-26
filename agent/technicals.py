@@ -282,12 +282,14 @@ def read(df: pd.DataFrame) -> TechRead:
     return t
 
 
-def confluence_count(t: TechRead, entry: float) -> tuple[int, list[str]]:
+def confluence_count(t: TechRead, entry: float, walls=None) -> tuple[int, list[str]]:
     """How many independent support/resistance signals line up near `entry`
     (within ~2%): EMA21, EMA50, a Fib level, the anchored VWAP, a liquidity-sweep
-    reclaim level, volume-profile POC/VAH/VAL, and any historical S/R zone.
+    reclaim level, volume-profile POC/VAH/VAL, any historical S/R zone, and (if
+    `walls` -- an options_walls.OptionsWalls -- is passed) the call/put wall.
     STRATEGY.md's own confluence rule: single signals mean little, several lining
-    up at one price is a real level."""
+    up at one price is a real level. Options walls are informational/confluence
+    input only -- see options_walls.py; never a hard gate on their own."""
     hits = []
     def near(level: float | None, name: str) -> None:
         if level and abs(entry - level) / entry * 100 <= 2.0:
@@ -304,6 +306,10 @@ def confluence_count(t: TechRead, entry: float) -> tuple[int, list[str]]:
     near(t.val, "volume profile VAL")
     for z in t.sr_zones:
         near(z["level"], f"historical {z['type']} (touched {z['strength']}x)")
+    if walls is not None and walls.source != "unavailable":
+        tag = " (volume proxy)" if walls.source == "volume_fallback" else ""
+        near(walls.call_wall, f"options call wall{tag}")
+        near(walls.put_wall, f"options put wall{tag}")
     return len(hits), hits
 
 

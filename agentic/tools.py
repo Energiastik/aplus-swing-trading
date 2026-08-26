@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from agent import data, market_regime, sector_rotation, screener, technicals, halal, report  # noqa: E402
+from agent import data, market_regime, sector_rotation, screener, technicals, halal, report, options_walls  # noqa: E402
 
 
 # ---------- plain functions (shared by both servers) ----------
@@ -58,17 +58,44 @@ def t_technical_read(ticker: str) -> str:
         "flags": t.flags})
 
 
-def t_confluence_count(ticker: str, entry: float) -> str:
+def t_confluence_count(ticker: str, entry: float, include_options_walls: bool = False) -> str:
     """How many independent support/resistance signals (EMA21/50, Fibonacci levels,
-    anchored VWAP, liquidity-sweep reclaim level) sit within ~2% of a proposed entry
-    price. Call after you've settled on a real entry from the chart, not before."""
+    anchored VWAP, liquidity-sweep reclaim level, volume-profile POC/VAH/VAL,
+    historical S/R zones) sit within ~2% of a proposed entry price. Call after you've
+    settled on a real entry from the chart, not before. Set include_options_walls=True
+    to also fold in the call/put wall (adds an options-chain fetch; informational
+    confluence only, per STRATEGY.md -- never a hard gate)."""
     df = data.history(ticker, period="2y")
     if df.empty or len(df) < 120:
         return json.dumps({"error": f"no data for {ticker}"})
     t = technicals.read(df)
-    count, hits = technicals.confluence_count(t, entry)
+    walls = None
+    if include_options_walls:
+        walls = options_walls.read(ticker, t.price)
+    count, hits = technicals.confluence_count(t, entry, walls=walls)
     return json.dumps({"ticker": ticker, "entry": entry, "confluence_count": count,
                        "signals": hits})
+
+
+def t_options_walls(ticker: str) -> str:
+    """Options call/put wall read: the strike with the most open interest above price
+    (call wall, resistance-ish) and below price (put wall, support-ish) for the nearest
+    liquid expiry. Informational/confluence signal only -- never a hard gate, per
+    STRATEGY.md section 6. Falls back to today's volume (labeled) when open interest is
+    unavailable, and reports source="unavailable" rather than fabricate a level."""
+    df = data.history(ticker, period="5d")
+    if df.empty:
+        return json.dumps({"error": f"no data for {ticker}"})
+    price = float(df["Close"].iloc[-1])
+    w = options_walls.read(ticker, price)
+    return json.dumps({
+        "ticker": ticker, "price": price, "source": w.source,
+        "expiry": w.expiry, "days_to_expiry": w.days_to_expiry,
+        "call_wall": w.call_wall, "call_wall_strength": w.call_wall_strength,
+        "dist_to_call_wall_pct": w.dist_to_call_wall_pct,
+        "put_wall": w.put_wall, "put_wall_strength": w.put_wall_strength,
+        "dist_to_put_wall_pct": w.dist_to_put_wall_pct,
+        "put_call_ratio": w.put_call_ratio})
 
 
 def t_render_chart(ticker: str) -> str:
@@ -123,6 +150,16 @@ def build_sdk_server():
              "VDU, ATR, pivot, suggested entry/stop/target, Fibonacci retracement, anchored "
              "VWAP, liquidity sweep, volume-profile POC/VAH/VAL, historical S/R zones.",
              {"ticker": str})(wrap(t_technical_read)),
+        tool("confluence_count", "How many independent S/R signals (EMA/Fib/VWAP/"
+             "liquidity-sweep/POC-VA/historical S-R, plus options walls if requested) "
+             "sit within ~2% of a proposed entry price. Call after settling on a real "
+             "entry from the chart.",
+             {"ticker": str, "entry": float, "include_options_walls": bool}
+             )(wrap(t_confluence_count)),
+        tool("options_walls", "Options call/put wall (max open-interest strike above/"
+             "below price, nearest liquid expiry). Informational confluence signal "
+             "only -- never a hard gate. Falls back to volume (labeled) when open "
+             "interest is unavailable.", {"ticker": str})(wrap(t_options_walls)),
         tool("render_chart", "Render daily candlestick PNG with EMA 9/21/50/200 and volume "
              "for a ticker; returns file path. READ the image afterwards to inspect the "
              "chart visually.", {"ticker": str})(wrap(t_render_chart)),

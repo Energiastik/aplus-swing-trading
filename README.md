@@ -13,11 +13,12 @@ Vision агенттің «көзі» — `strategy/vision_prompt.md`.
 | 1 | `market_regime` | Day 3 weekly checklist + Day 2 VIX | 4/4 aggressive · 2–3 half-size · 0–1 watchlist-only |
 | 2 | `sector_rotation` | Day 2 practicum | 11 ETF vs SPY, 1W/4W/12W, weights 3/2/1 |
 | 3 | `screener` | Day 4 Finviz funnel | 11,500 → ~13 filters, Price×Vol > $10M |
-| 4 | `technicals` | Day 3 + Smart Money | EMA stack, RS pctile, RSI 40–80, VDU, pivot, ATR stops, Fibonacci retracement, anchored VWAP, liquidity-sweep detection, confluence count |
-| 5 | `chart_vision` | Day 3+4 visual criteria | mplfinance snapshot → Claude → grade A/B/C/F + entry plan |
-| 6 | `halal` | Day 4 AAOIFI | business screen + 3 ratios → PASS/REVIEW/FAIL (+ "confirm in Zoya") |
-| 7 | `ranking` | — | hard gates (EMA200, halal, R/R≥2, vision≠F) → weighted composite (+/- bonus for R/R above/below 3:1) |
-| 8 | `report` | — | Telegram (text + chart photos) + dark navy/gold HTML |
+| 4 | `technicals` | Day 3 + Smart Money | EMA stack, RS pctile, RSI 40–80, VDU, pivot, ATR stops, Fibonacci retracement, anchored VWAP, liquidity-sweep detection, volume-profile POC/VAH/VAL, historical S/R zones, confluence count |
+| 5 | `chart_vision` | Day 3+4 visual criteria | mplfinance snapshot (EMAs + S/R + Fib + POC/VA + VWAP overlays) → Claude → grade A/B/C/F + entry plan + room-to-target |
+| 6 | `options_walls` | Smart Money (Day 4) | call/put wall from open interest (volume fallback if OI unavailable) — informational confluence only, never a gate |
+| 7 | `halal` | Day 4 AAOIFI | business screen + 3 ratios → PASS/REVIEW/FAIL (+ "confirm in Zoya") |
+| 8 | `ranking` | — | hard gates (EMA200, halal, R/R≥2, vision≠F) → weighted composite (+/- bonus for R/R above/below 3:1) |
+| 9 | `report` | — | Telegram (text + chart photos) + dark navy/gold HTML |
 
 ## Setup
 ```bash

@@ -102,12 +102,22 @@ feel obvious.
   zone is a long setup, stop just below the zone, invalid if price fully trades
   through it. Not numerically detected yet; the vision step identifies the zone
   visually from the chart, same as pattern/stage grading.
-- **Options call/put walls (planned, not yet implemented)**: proximity to a strike
-  with unusually concentrated open interest (call OI above price = potential
-  resistance/capped upside; put OI below price = potential support) will be one more
-  confluence input, informational only — thin options liquidity on many mid-cap
-  swing names makes this noisy, never a hard gate. Until agent/options_walls.py
-  exists, don't reference this in analysis — there's no data behind it yet.
+- **Options call/put walls (now computed, `agent/options_walls.py`)**: the strike with
+  the most open interest above price (call wall, potential resistance/capped upside)
+  and below price (put wall, potential support), from the nearest liquid expiry
+  (skips 0–6 day expiries as too thin/stale, prefers 7–45 days out). Informational
+  confluence input ONLY, never a hard gate or a size decision — same rule as every
+  other confluence signal, and thin liquidity on many mid-cap swing names makes this
+  noisier than SPY/QQQ-level names. Yahoo's open-interest field is occasionally empty
+  across an entire chain (a known gap in the free feed, observed even on SPY/QQQ) —
+  when that happens the module falls back to today's traded volume as a weaker
+  "activity wall" proxy and labels it `source: "volume_fallback"` in the tool output;
+  when even that's empty it reports `source: "unavailable"` rather than invent a
+  level. Call `t_options_walls`/`t_confluence_count(..., include_options_walls=True)`
+  on final candidates only — this is an options-chain fetch, not free numeric compute,
+  so don't call it inside the wide screener funnel. This does NOT mean trading
+  options — see Section 0: long-only, no options as an instrument, ever. This is
+  reading the options market's positioning as a signal for the stock trade only.
 
 ## 7. Risk parameters (attached to every recommendation)
 - Risk per trade 1–1.5% of deposit; shares = (Deposit × Risk%) ÷ (Entry − Stop).
