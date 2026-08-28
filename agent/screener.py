@@ -37,11 +37,15 @@ def run_finviz(limit: int = 60) -> pd.DataFrame:
         return pd.DataFrame()
     df = df.rename(columns={"Ticker": "ticker", "Sector": "sector",
                             "Industry": "industry", "Price": "price"})
-    # finvizfinance 1.3.0 scraper bug: the Ticker cell text comes back with its first
-    # character duplicated (e.g. "BBRZE" for Braze/BRZE, "AANET" for Arista/ANET).
-    # Verified against yfinance company-name lookups — stripping the extra leading
-    # char recovers the real symbol in every observed case.
-    df["ticker"] = df["ticker"].astype(str).str.slice(1)
+    # NOTE: finvizfinance 1.3.0 had a scraper bug where the Ticker cell text came back
+    # with its first character duplicated (e.g. "BBRZE" for Braze/BRZE). That bug is
+    # gone as of finvizfinance 1.4.0 (verified live: raw scrape now returns clean
+    # tickers like "PGEN", "FIGR", "BRZE") -- a stray fixup that unconditionally
+    # stripped the first character used to live here and was silently turning correct
+    # tickers into wrong ones (PGEN -> GEN, FIGR -> IGR: real tickers, wrong companies).
+    # Removed. If a future finvizfinance regression reintroduces character corruption,
+    # the price-sanity check below will catch it (scraped price vs recomputed price
+    # from real history) rather than silently feeding wrong-company data downstream.
     # Stage 3b: Price x Volume > $10M -- deliberately NOT using this table's own
     # "Volume" column. That column is Finviz's live/current-session volume, not an
     # average -- this routine typically runs pre-market (well before the 9:30am ET
@@ -61,7 +65,10 @@ def run_finviz(limit: int = 60) -> pd.DataFrame:
             continue
         avg_vol = float(h["Volume"].iloc[-20:].mean())
         price = pd.to_numeric(row["price"], errors="coerce")
-        if pd.notna(price) and avg_vol * price > 10_000_000:
+        real_price = float(h["Close"].iloc[-1])
+        if pd.isna(price) or real_price <= 0 or abs(price - real_price) / real_price > 0.15:
+            continue  # scraped price disagrees with real history -- wrong ticker, skip
+        if avg_vol * price > 10_000_000:
             keep.append(row["ticker"])
     df = df[df["ticker"].isin(keep)]
     return df.head(limit)[["ticker", "sector", "industry", "price"]].reset_index(drop=True)
