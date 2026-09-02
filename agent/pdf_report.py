@@ -130,7 +130,9 @@ def _top10_table(data: dict, ss) -> list:
     for c in top10:
         rows.append([
             c.get("ticker", ""), c.get("composite_score", ""), c.get("chart_grade", ""),
-            c.get("sector_stage", ""), c.get("rr", "—"), c.get("earnings_days", "—"),
+            Paragraph(str(c.get("sector_stage", "")), ss["Small"]),
+            Paragraph(str(c.get("rr", "—")), ss["Small"]),
+            Paragraph(str(c.get("earnings_days", "—")), ss["Small"]),
             Paragraph(c.get("explanation", ""), ss["Small"]),
         ])
     t = Table(rows, hAlign="LEFT", colWidths=[0.5 * inch, 0.4 * inch, 0.6 * inch,
