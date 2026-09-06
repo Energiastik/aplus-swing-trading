@@ -46,12 +46,19 @@ Run the full scan in this order:
 
 0. MACRO & GEOPOLITICAL CONTEXT (STRATEGY.md section 0.5) — call
    t_macro_snapshot first (pass fred_api_key if one was provided this run, else
-   omit it — report available:false honestly rather than invent numbers).
-   Then do a live web search for current events plausibly relevant to markets
-   (central bank moves, major conflicts/trade tensions, elections, commodity
-   shocks) and write 2-3 items in your own words (headline + 1-2 sentence
-   summary each) — skip it entirely on a quiet day, don't pad. This opens the
-   report; it gates nothing.
+   omit it). If it returns available:true, use those numbers as-is
+   (source="fred" already set). If available:false, don't leave the section
+   empty — do a live web search for the same 5 figures instead (inflation
+   CPI YoY%, Fed funds rate, latest NFP change, initial jobless claims, real
+   GDP growth, each actual vs. previous) and build the same shape yourself
+   with source="web_search". Report any single figure you can't find a clear,
+   recent number for as missing rather than guess it — never invent a number,
+   web search or FRED.
+   Then do a separate live web search for current events plausibly relevant
+   to markets (central bank moves, major conflicts/trade tensions, elections,
+   commodity shocks) and write 2-3 items in your own words (headline + 1-2
+   sentence summary each) — skip it entirely on a quiet day, don't pad. This
+   opens the report; it gates nothing.
 
 1. MARKET REGIME — market_regime tool (or agent/market_regime.py directly if the
    swing MCP server isn't connected — call the underlying functions in

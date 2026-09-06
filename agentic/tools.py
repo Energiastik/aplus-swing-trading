@@ -38,7 +38,7 @@ def t_macro_snapshot(fred_api_key: str = "") -> str:
     available=false rather than fabricate numbers)."""
     m = macro.read(api_key=fred_api_key or None)
     return json.dumps({
-        "available": m.available, "error": m.error,
+        "available": m.available, "source": m.source, "error": m.error,
         "inflation_cpi_yoy_pct": m.inflation_cpi_yoy_pct,
         "fed_funds_rate_pct": m.fed_funds_rate_pct,
         "nonfarm_payrolls_change_k": m.nonfarm_payrolls_change_k,

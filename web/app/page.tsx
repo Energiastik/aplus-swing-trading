@@ -127,6 +127,13 @@ export default async function DashboardPage() {
               </p>
             )
           )}
+          {run.macro?.available && (
+            <p className="meta-line" style={{ marginTop: "0.5rem" }}>
+              {run.macro.source === "fred"
+                ? "Источник: FRED (официальные данные ФРС)."
+                : "Источник: веб-поиск (не официальный API — сверьте перед принятием решений)."}
+            </p>
+          )}
           {run.geopolitical && run.geopolitical.length > 0 && (
             <div style={{ marginTop: "1rem" }}>
               {run.geopolitical.map((g, i) => (

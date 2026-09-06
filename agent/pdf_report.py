@@ -109,8 +109,11 @@ def _macro_block(data: dict, ss) -> list:
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]))
         flow.append(t)
+        source_note = ("Источник: FRED (официальные данные ФРС)." if m.get("source") == "fred"
+                       else "Источник: веб-поиск (не официальный API — сверьте перед принятием решений).")
+        flow.append(Paragraph(source_note, ss["Small"]))
     elif m:
-        flow.append(Paragraph(f"Макро-данные недоступны ({m.get('error', 'нет ключа FRED')}).",
+        flow.append(Paragraph(f"Макро-данные недоступны ({m.get('error', 'источник не указан')}).",
                               ss["Small"]))
     if geo:
         flow.append(Spacer(1, 8))
@@ -230,11 +233,13 @@ def build_pdf(data: dict, out_path: str | Path) -> Path:
       "regime": {"score": int, "mode": "AGGRESSIVE"|"CAUTIOUS"|"NO_TRADE",
                  "vix": float|None, "vix_note": str (Russian),
                  "size_multiplier": float, "checks": {label: bool}},
-      "macro": {"available": bool, "error": str|None,
+      "macro": {"available": bool, "source": "fred"|"web_search", "error": str|None,
                 "inflation_cpi_yoy_pct": {"actual","actual_date","previous","previous_date"},
                 "fed_funds_rate_pct": {...same shape...},
                 "nonfarm_payrolls_change_k": {...}, "jobless_claims_k": {...},
-                "gdp_growth_pct": {...}} -- from t_macro_snapshot, informational only.
+                "gdp_growth_pct": {...}} -- t_macro_snapshot (FRED) if a key was
+          provided this run, else the agent's own live web search for the same 5
+          figures (source="web_search" then) -- informational only, never a gate.
       "geopolitical": [{"headline","summary"}] -- 2-3 items, Russian, from a live
           web search each run. Omit the key entirely on a day nothing warrants it
           rather than padding with filler.

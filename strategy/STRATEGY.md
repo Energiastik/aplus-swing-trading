@@ -19,11 +19,18 @@ agent receives the "Visual Criteria" section as its system prompt context.
 Read this first, every run, before Market Regime — it's context for interpreting the
 rest of the scan, not a filter. Nothing here rejects a setup or changes position size;
 that's what Section 1 (Market Regime) is for.
-- **Macro snapshot** (`t_macro_snapshot`, sourced from FRED — the Fed's own data,
-  free API key required, see `agent/macro.py`): inflation (CPI YoY%), Fed funds rate,
-  nonfarm payrolls change, initial jobless claims, real GDP growth — each as actual
-  vs. previous reading. If the key isn't available this run, report macro as
-  unavailable honestly; never fabricate a number.
+- **Macro snapshot**: inflation (CPI YoY%), Fed funds rate, nonfarm payrolls change,
+  initial jobless claims, real GDP growth — each as actual vs. previous reading.
+  Call `t_macro_snapshot` first (FRED — the Fed's own official data; only used if a
+  free API key was provided this run, see `agent/macro.py`). If it reports
+  available:false (no key, or FRED itself failed), fall back to a live web search
+  for the same 5 figures instead of leaving the section empty — same live-search
+  approach as the geopolitical summary below. Either way, label the source honestly
+  in the output (`source: "fred"` or `"web_search"`) so the reader knows which one
+  they're looking at — a web search isn't as reliable as the Fed's own release, and
+  should read as "worth a second look," not gospel. If even a web search can't turn
+  up a clear, recent figure for one specific series, leave that one out — never
+  guess a number.
 - **Geopolitical summary** (2–3 items, live web search each run — not a fixed feed):
   current events plausibly relevant to markets (central bank moves, major conflicts/
   trade tensions, elections, commodity shocks). Each item: a one-line headline + a

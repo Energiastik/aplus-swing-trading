@@ -35,19 +35,24 @@ MCP tool calls inside this session, not standalone `python -m` commands. If no
 token was provided, just omit it — the module falls back to yfinance
 automatically, no error either way.
 
-Same pattern for FRED_API_KEY if one appears in this routine's live prompt:
-pass it as the `fred_api_key` argument on t_macro_snapshot (DAILY_PROMPT.md
-step 0). If no key was provided, omit it — the tool reports available:false,
-never fabricates numbers. This session also has WebSearch access for step 0's
-geopolitical summary — use it live each run, don't rely on training data for
-current events.
+Same pattern for FRED_API_KEY if one ever appears in this routine's live
+prompt: pass it as the `fred_api_key` argument on t_macro_snapshot
+(DAILY_PROMPT.md step 0). It's optional, not required — no signup needed to
+use this feature at all. If no key was provided (the normal case), t_macro_
+snapshot reports available:false and step 0 falls back to a live web search
+for the same 5 figures instead, labeled source="web_search". This session
+has WebSearch access for both step 0's macro fallback and its geopolitical
+summary — use it live each run, don't rely on training data for current
+events or economic figures.
 
 When the scan is complete, do this final step — don't skip it even on a
 zero-candidate day:
 
 1. Assemble everything into a dict matching the schema documented at the top
-   of agent/pdf_report.py: date, macro (from t_macro_snapshot, step 0 — pass
-   through as-is, including available:false if that's what it reported),
+   of agent/pdf_report.py: date, macro (step 0's result — either
+   t_macro_snapshot's output as-is when source="fred", or the web-search
+   fallback dict you built yourself with source="web_search", or
+   available:false if neither turned up real numbers; never invent one),
    geopolitical (step 0's 2-3 items, already written in Russian since you
    generated them live — omit the key entirely on a day nothing warranted
    it), regime, sector_table, sector_rotation_highlights,

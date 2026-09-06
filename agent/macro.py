@@ -30,6 +30,10 @@ SERIES = {
 @dataclass
 class MacroSnapshot:
     available: bool = False
+    source: str = "fred"  # this module only ever produces FRED-sourced readings;
+                          # the "web_search" alternative is assembled by the calling
+                          # agent itself (DAILY_PROMPT.md step 0) when no FRED key is
+                          # available, not by this function.
     error: str | None = None
     inflation_cpi_yoy_pct: dict = field(default_factory=dict)
     fed_funds_rate_pct: dict = field(default_factory=dict)

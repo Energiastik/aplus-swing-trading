@@ -109,6 +109,7 @@ export interface MacroReading {
 
 export interface Macro {
   available: boolean;
+  source?: "fred" | "web_search";
   error: string | null;
   inflation_cpi_yoy_pct?: MacroReading;
   fed_funds_rate_pct?: MacroReading;
