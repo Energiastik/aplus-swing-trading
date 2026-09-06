@@ -2,7 +2,7 @@ yfinance>=0.2.40
 pandas>=2.0
 numpy
 mplfinance
-finvizfinance
+finvizfinance>=1.4.0  # 1.3.0 had a scraper bug that duplicated each ticker's leading char
 anthropic>=0.34
 requests
 pyarrow
