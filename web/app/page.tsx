@@ -5,6 +5,7 @@ import MarketOverview from "@/components/MarketOverview";
 import SectorComparison from "@/components/SectorComparison";
 import Top10Table from "@/components/Top10Table";
 import ThemeGrid from "@/components/ThemeGrid";
+import RRGChart from "@/components/RRGChart";
 import { StageHeader, StageConnector } from "@/components/FunnelStage";
 import { RadarAccent, SonarAccent, OrbitAccent, ScanAccent, LockAccent } from "@/components/Accents";
 
@@ -234,6 +235,12 @@ export default async function DashboardPage() {
             {run.sector_highlights}
           </p>
         )}
+      </section>
+
+      {/* Relative Rotation Graph */}
+      <section className="panel">
+        <h2><OrbitAccent />Relative Rotation Graph (JdK RS-Ratio / RS-Momentum)</h2>
+        <RRGChart points={run.rrg_points} />
       </section>
 
       <SectorComparison />

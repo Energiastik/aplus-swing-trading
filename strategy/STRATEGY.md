@@ -63,6 +63,11 @@ Trend rule: "Регим бірінші, сетап екінші" — if regime d
 - Rotation logic: "Біреудің дносы — басқаның потологы" — look for sectors turning up
   from weakness, don't chase deep red heatmaps ("қып-қызылдарына жоламаймыз").
 - Halal note: XLF (Financials) mostly non-compliant; classic defensives too slow for swing.
+- Visual companion (dashboard only, no PDF/analysis role): `sector-rotation/metrics.py`'s
+  `rrg_tail()` computes a JdK RS-Ratio/RS-Momentum Relative Rotation Graph for all
+  11 sectors + 14 themes, 26 weeks of history, rendered as a scrubbable chart on the
+  web dashboard (`rrg_points` in the ingest payload). Purely visual context for reading
+  rotation shape over time — nothing here gates or scores a candidate.
 
 ## 3. Screener Funnel (Day 4: 11,500 → ~13)
 Stage 1 basics: Price > $5 · Market cap Mid–Mega (> $2B) · Avg volume > 750K.

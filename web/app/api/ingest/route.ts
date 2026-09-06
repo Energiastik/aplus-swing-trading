@@ -76,6 +76,13 @@ CREATE TABLE IF NOT EXISTS verdicts (
     ticker TEXT, tv_symbol TEXT, entry REAL, stop REAL, target REAL, rr TEXT,
     expected_gain_pct TEXT, reasoning TEXT
 );
+CREATE TABLE IF NOT EXISTS rrg_points (
+    id SERIAL PRIMARY KEY,
+    run_id INT REFERENCES runs(id) ON DELETE CASCADE,
+    name TEXT, kind TEXT, etf TEXT, tv_symbol TEXT,
+    week_date DATE, seq INT, rs_ratio REAL, rs_momentum REAL
+);
+CREATE INDEX IF NOT EXISTS idx_rrg_points_run ON rrg_points(run_id);
 CREATE INDEX IF NOT EXISTS idx_sector_table_run ON sector_table(run_id);
 CREATE INDEX IF NOT EXISTS idx_all_candidates_run ON all_candidates(run_id);
 CREATE INDEX IF NOT EXISTS idx_top10_run ON top10(run_id);
@@ -144,6 +151,16 @@ interface IngestBody {
     universe?: number;
     accum_ratio?: number;
     status?: string;
+  }>;
+  rrg_points?: Array<{
+    name?: string;
+    kind?: string;
+    etf?: string;
+    tv_symbol?: string;
+    week_date?: string;
+    seq?: number;
+    rs_ratio?: number;
+    rs_momentum?: number;
   }>;
   top10?: Array<{
     ticker?: string;
@@ -235,7 +252,7 @@ export async function POST(req: NextRequest) {
     );
     const runId = runRes.rows[0].id;
 
-    for (const t of ["sector_table", "all_candidates", "top10", "verdicts", "theme_rotation"]) {
+    for (const t of ["sector_table", "all_candidates", "top10", "verdicts", "theme_rotation", "rrg_points"]) {
       await client.query(`DELETE FROM ${t} WHERE run_id = $1`, [runId]);
     }
 
@@ -294,6 +311,17 @@ export async function POST(req: NextRequest) {
           t.ema_stack ?? null, t.ema_slope ?? null, t.rel_vol ?? null, t.vol_trend ?? null,
           t.streak_leaders ?? null, t.avg_streak ?? null, t.breakouts_20d ?? null,
           t.higher_lows ?? null, t.universe ?? null, t.accum_ratio ?? null, t.status ?? null,
+        ]
+      );
+    }
+
+    for (const p of body.rrg_points ?? []) {
+      await client.query(
+        `INSERT INTO rrg_points (run_id, name, kind, etf, tv_symbol, week_date, seq, rs_ratio, rs_momentum)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          runId, p.name ?? null, p.kind ?? null, p.etf ?? null, p.tv_symbol ?? p.etf ?? null,
+          p.week_date ?? null, p.seq ?? null, p.rs_ratio ?? null, p.rs_momentum ?? null,
         ]
       );
     }

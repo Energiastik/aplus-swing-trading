@@ -79,6 +79,15 @@ zero-candidate day:
    just carry them over field-for-field (blank CSV cells for non-SPDR themes
    stay null, don't invent them).
 
+   Also include rrg_points: one entry per row of the sibling
+   sector-rotation/data/rrg_<date>.csv (written by the same pipeline.py run,
+   right after report_<date>.csv) with name, kind, etf, week_date, seq,
+   rs_ratio, rs_momentum — carry over field-for-field, don't recompute or
+   filter it (it's the full ~26-week history feeding the dashboard's
+   Relative Rotation Graph scrub slider, not just the latest week). This is
+   web-dashboard-only -- it doesn't appear in the PDF, so nothing to
+   translate here.
+
    Write EVERY free-text field in Russian: sector_rotation_highlights,
    top10[].explanation, verdicts[].reasoning, footer_note, vix_note,
    geopolitical[].headline/summary (write these in Russian directly when you

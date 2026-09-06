@@ -96,3 +96,18 @@ SRS_STRONG_THRESHOLD = 0.6
 SRS_WEAK_THRESHOLD = 0.4
 DELTA_RISING_THRESHOLD = 0.05
 BREADTH_TREND_THRESHOLD_PP = 2.0   # percentage points of breadth change to call it a trend
+
+# --- Relative Rotation Graph (JdK RS-Ratio / RS-Momentum) ---
+# Open-source reproduction of Julius de Kempenaer's method (exact smoothing
+# constants StockCharts/Optuma use internally aren't published) -- these
+# values are the commonly-cited defaults, tuned for a weekly tail: quadrant
+# placement and rotation shape are faithful even if absolute numbers won't
+# be pixel-identical to a commercial RRG tool.
+# HISTORY is everything computed and stored (the frontend's scrub slider
+# ranges over this); TAIL_WEEKS is only the frontend's *default* visible
+# window length within that history -- Python doesn't truncate to it.
+RRG_HISTORY_WEEKS = 26    # ~6 months, stored so the dashboard can scrub back
+RRG_TAIL_WEEKS = 8        # default trailing window length shown at once
+RRG_SMOOTH_WINDOW = 10    # weeks, EMA span used to smooth the raw RS ratio
+RRG_Z_WINDOW = 10         # weeks, rolling window for the mean/std normalization
+RRG_MOMENTUM_ROC = 1      # weeks, rate-of-change period feeding RS-Momentum

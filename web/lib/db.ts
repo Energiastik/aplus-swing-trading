@@ -89,6 +89,17 @@ export interface ThemeRow {
   status: string | null;
 }
 
+export interface RRGPoint {
+  name: string;
+  kind: string | null;
+  etf: string;
+  tv_symbol: string;
+  week_date: string;
+  seq: number;
+  rs_ratio: number | null;
+  rs_momentum: number | null;
+}
+
 export interface VerdictRow {
   ticker: string;
   tv_symbol: string;
@@ -142,6 +153,7 @@ export interface RunData {
   top10: Top10Row[];
   verdicts: VerdictRow[];
   theme_rotation: ThemeRow[];
+  rrg_points: RRGPoint[];
 }
 
 export async function getLatestRun(): Promise<RunData | null> {
@@ -154,7 +166,7 @@ export async function getLatestRun(): Promise<RunData | null> {
   if (runRes.rows.length === 0) return null;
   const run = runRes.rows[0];
 
-  const [sectorRes, candidatesRes, top10Res, verdictsRes, themeRes] = await Promise.all([
+  const [sectorRes, candidatesRes, top10Res, verdictsRes, themeRes, rrgRes] = await Promise.all([
     pool.query(
       `SELECT rank, etf, sector, w1, w4, w12, weighted FROM sector_table
        WHERE run_id = $1 ORDER BY rank`,
@@ -184,6 +196,11 @@ export async function getLatestRun(): Promise<RunData | null> {
        FROM theme_rotation WHERE run_id = $1 ORDER BY srs DESC NULLS LAST`,
       [run.id]
     ),
+    pool.query(
+      `SELECT name, kind, etf, tv_symbol, week_date, seq, rs_ratio, rs_momentum
+       FROM rrg_points WHERE run_id = $1 ORDER BY name, seq`,
+      [run.id]
+    ),
   ]);
 
   return {
@@ -194,6 +211,10 @@ export async function getLatestRun(): Promise<RunData | null> {
     top10: top10Res.rows,
     verdicts: verdictsRes.rows,
     theme_rotation: themeRes.rows,
+    rrg_points: rrgRes.rows.map((r) => ({
+      ...r,
+      week_date: r.week_date instanceof Date ? r.week_date.toISOString().slice(0, 10) : r.week_date,
+    })),
   };
 }
 

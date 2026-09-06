@@ -214,6 +214,44 @@ def streak_profile(prices: pd.DataFrame, tickers: list[str],
     }
 
 
+def rrg_tail(sector_close: pd.Series, bench_close: pd.Series,
+             tail_periods: int = config.RRG_HISTORY_WEEKS,
+             smooth_window: int = config.RRG_SMOOTH_WINDOW,
+             z_window: int = config.RRG_Z_WINDOW,
+             momentum_roc: int = config.RRG_MOMENTUM_ROC) -> pd.DataFrame:
+    """Weekly JdK RS-Ratio / RS-Momentum trailing tail for one sector/theme
+    vs the benchmark, for plotting on a Relative Rotation Graph. Both
+    outputs are normalized to oscillate around 100: RS-Ratio > 100 means
+    outperforming the benchmark, RS-Momentum > 100 means that outperformance
+    is accelerating. Quadrant: both >100 = Leading, RS-Ratio>100 alone =
+    Weakening, both <100 = Lagging, RS-Momentum>100 alone = Improving.
+
+    Uses the full ~1y of daily history already fetched for the sector
+    report -- resampled to weekly closes, so each day's run recomputes the
+    complete tail fresh rather than needing to accumulate stored points
+    across multiple days.
+
+    Returns a DataFrame indexed by week-end date with columns
+    [rs_ratio, rs_momentum], the last `tail_periods` rows (fewer if there
+    isn't enough history yet, e.g. a newly-added theme ETF).
+    """
+    aligned = pd.concat([sector_close, bench_close], axis=1, join="inner")
+    aligned.columns = ["sector", "bench"]
+    weekly = aligned.resample("W-FRI").last().dropna()
+
+    rs = 100 * weekly["sector"] / weekly["bench"]
+    rs_smooth = rs.ewm(span=smooth_window, adjust=False).mean()
+    rs_std = rs_smooth.rolling(z_window).std()
+    rs_ratio = 100 + (rs_smooth - rs_smooth.rolling(z_window).mean()) / rs_std.replace(0, np.nan)
+
+    momentum_raw = rs_ratio.diff(momentum_roc)
+    mom_std = momentum_raw.rolling(z_window).std()
+    rs_momentum = 100 + (momentum_raw - momentum_raw.rolling(z_window).mean()) / mom_std.replace(0, np.nan)
+
+    out = pd.DataFrame({"rs_ratio": rs_ratio, "rs_momentum": rs_momentum}).dropna()
+    return out.tail(tail_periods)
+
+
 def classify_status(srs: float, delta3d: float, ema_stack: str, ema_slope: str,
                      vol_trend: str, breadth_trend: str) -> str:
     """Map SRS/Δ3D plus the EMA/volume/breadth confirmation signals onto the
