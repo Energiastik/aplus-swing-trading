@@ -1,4 +1,7 @@
+import { cookies } from "next/headers";
 import { getLatestRun } from "@/lib/db";
+import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
+import LogoutButton from "@/components/LogoutButton";
 import { RegimeModeBadge } from "@/components/Badges";
 import TradingViewWidget from "@/components/TradingViewWidget";
 import MarketOverview from "@/components/MarketOverview";
@@ -17,12 +20,20 @@ function fmtDate(iso: string) {
 }
 
 export default async function DashboardPage() {
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const session = sessionToken ? await verifySessionToken(sessionToken) : null;
+
   let run;
   try {
     run = await getLatestRun();
   } catch (err) {
     return (
       <main className="container">
+        <div className="session-bar">
+          {session?.name || session?.email}
+          <LogoutButton />
+        </div>
         <div className="panel">
           <h2>База данных недоступна</h2>
           <p className="meta-line">
@@ -37,6 +48,10 @@ export default async function DashboardPage() {
   if (!run) {
     return (
       <main className="container">
+        <div className="session-bar">
+          {session?.name || session?.email}
+          <LogoutButton />
+        </div>
         <h1>A+ Swing Trading</h1>
         <div className="panel">
           <p className="empty-state">
@@ -52,6 +67,10 @@ export default async function DashboardPage() {
 
   return (
     <main className="container">
+      <div className="session-bar">
+        {session?.name || session?.email}
+        <LogoutButton />
+      </div>
       <h1>A+ Swing Trading</h1>
       <p className="meta-line">
         Скрининг за {fmtDate(run.date)} · обновлено{" "}
