@@ -1,5 +1,8 @@
+"use client";
+
 import TradingViewWidget from "./TradingViewWidget";
 import { PulseAccent } from "./Accents";
+import { useLanguage } from "@/lib/i18n";
 
 // Real TradingView symbols, resolved via yfinance's exchange field (see
 // agent/tv_symbol.py) rather than guessed.
@@ -10,17 +13,15 @@ const INDICES: { label: string; symbol: string }[] = [
 ];
 
 export default function MarketOverview() {
+  const { t } = useLanguage();
   return (
     <section className="panel">
       <h2>
         <PulseAccent />
-        Быстрый обзор рынка
+        {t("market_overview")}
       </h2>
       <p className="meta-line" style={{ marginTop: "-0.5rem", marginBottom: "1rem" }}>
-        2ч, 6 месяцев, EMA + объём. (Примечание: 4-часовой интервал недоступен в
-        бесплатном виджете TradingView — он ограничен 2ч максимум для
-        внутридневных графиков; это подтверждённое ограничение виджета, не
-        настройка страницы.)
+        {t("market_overview_note")}
       </p>
       <div
         style={{

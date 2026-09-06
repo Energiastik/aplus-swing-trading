@@ -1,5 +1,8 @@
+"use client";
+
 import TradingViewWidget from "./TradingViewWidget";
 import { OrbitAccent } from "./Accents";
+import { useLanguage } from "@/lib/i18n";
 
 // All 11 SPDR sector ETFs, real TradingView symbols resolved via yfinance's
 // exchange field (see agent/tv_symbol.py) -- all trade on NYSE Arca, which
@@ -10,16 +13,15 @@ const SECTOR_SYMBOLS = [
 ];
 
 export default function SectorComparison() {
+  const { t } = useLanguage();
   return (
     <section className="panel">
       <h2>
         <OrbitAccent />
-        Секторы против SPY
+        {t("sector_vs_spy")}
       </h2>
       <p className="meta-line" style={{ marginTop: "-0.5rem", marginBottom: "1rem" }}>
-        Все 11 секторов наложены на один график в процентах от SPY. Кликните
-        по тикеру в легенде справа, чтобы скрыть/показать его. Кнопки под
-        графиком (5Д, 1М, 3М и т.д.) переключают период сравнения.
+        {t("sector_vs_spy_note")}
       </p>
       <div className="tv-frame">
         <span className="tv-sweep" />

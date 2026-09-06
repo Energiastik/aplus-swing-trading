@@ -59,6 +59,10 @@ Run the full scan in this order:
    commodity shocks) and write 2-3 items in your own words (headline + 1-2
    sentence summary each) — skip it entirely on a quiet day, don't pad. This
    opens the report; it gates nothing.
+   If running as the automated routine (ROUTINE_PROMPT.md), write each item's
+   headline+summary in both Russian and English (headline/summary +
+   headline_en/summary_en) — see that file for why. In an interactive session
+   without that instruction, Russian alone is fine.
 
 1. MARKET REGIME — market_regime tool (or agent/market_regime.py directly if the
    swing MCP server isn't connected — call the underlying functions in

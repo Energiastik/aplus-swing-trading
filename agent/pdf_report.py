@@ -257,6 +257,15 @@ def build_pdf(data: dict, out_path: str | Path) -> Path:
       }] -- 0-3 names that genuinely clear every hard gate. Never padded.
       "footer_note": str (Russian),
     }
+
+    Every free-text field above (vix_note, geopolitical[].headline/summary,
+    sector_rotation_highlights, top10[].explanation, verdicts[].reasoning,
+    footer_note, top10[].business_summary/news[] once tv_symbol.py has run)
+    may also carry a same-named "_en" sibling (e.g. "footer_note_en") in the
+    results JSON -- that's for the web dashboard's language toggle
+    (web/lib/i18n.tsx), which falls back to the Russian field when it's
+    missing. This module never reads any "_en" field: the PDF stays
+    Russian-only by design, regardless of what results_<date>.json carries.
     """
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)

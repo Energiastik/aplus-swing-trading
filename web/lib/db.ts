@@ -44,6 +44,8 @@ export interface NewsItem {
   url?: string;
   published_at?: string;
   summary?: string;
+  title_en?: string;
+  summary_en?: string;
 }
 
 export interface Top10Row {
@@ -56,6 +58,7 @@ export interface Top10Row {
   rr: string | null;
   earnings_days: string | null;
   explanation: string | null;
+  explanation_en: string | null;
   pe_ratio: number | null;
   forward_pe: number | null;
   revenue_usd: number | null;
@@ -64,6 +67,7 @@ export interface Top10Row {
   eps_growth: number | null;
   debt_to_equity: number | null;
   business_summary: string | null;
+  business_summary_en: string | null;
   news: NewsItem[] | null;
 }
 
@@ -109,6 +113,7 @@ export interface VerdictRow {
   rr: string | null;
   expected_gain_pct: string | null;
   reasoning: string | null;
+  reasoning_en: string | null;
 }
 
 export interface MacroReading {
@@ -132,6 +137,8 @@ export interface Macro {
 export interface GeopoliticalItem {
   headline: string;
   summary: string;
+  headline_en?: string;
+  summary_en?: string;
 }
 
 export interface RunData {
@@ -141,10 +148,13 @@ export interface RunData {
   regime_mode: string | null;
   vix: number | null;
   vix_note: string | null;
+  vix_note_en: string | null;
   size_multiplier: number | null;
   regime_checks: RegimeChecks;
   sector_highlights: string | null;
+  sector_highlights_en: string | null;
   footer_note: string | null;
+  footer_note_en: string | null;
   created_at: string;
   macro: Macro | null;
   geopolitical: GeopoliticalItem[] | null;
@@ -159,8 +169,9 @@ export interface RunData {
 export async function getLatestRun(): Promise<RunData | null> {
   const pool = getPool();
   const runRes = await pool.query(
-    `SELECT id, date, regime_score, regime_mode, vix, vix_note, size_multiplier,
-            regime_checks, sector_highlights, footer_note, created_at, macro, geopolitical
+    `SELECT id, date, regime_score, regime_mode, vix, vix_note, vix_note_en, size_multiplier,
+            regime_checks, sector_highlights, sector_highlights_en, footer_note, footer_note_en,
+            created_at, macro, geopolitical
      FROM runs ORDER BY date DESC LIMIT 1`
   );
   if (runRes.rows.length === 0) return null;
@@ -178,14 +189,15 @@ export async function getLatestRun(): Promise<RunData | null> {
     ),
     pool.query(
       `SELECT rank, ticker, tv_symbol, composite_score, chart_grade, sector_stage,
-              rr, earnings_days, explanation, pe_ratio, forward_pe, revenue_usd,
-              revenue_growth, eps, eps_growth, debt_to_equity, business_summary, news
+              rr, earnings_days, explanation, explanation_en, pe_ratio, forward_pe, revenue_usd,
+              revenue_growth, eps, eps_growth, debt_to_equity, business_summary,
+              business_summary_en, news
        FROM top10
        WHERE run_id = $1 ORDER BY rank`,
       [run.id]
     ),
     pool.query(
-      `SELECT ticker, tv_symbol, entry, stop, target, rr, expected_gain_pct, reasoning
+      `SELECT ticker, tv_symbol, entry, stop, target, rr, expected_gain_pct, reasoning, reasoning_en
        FROM verdicts WHERE run_id = $1`,
       [run.id]
     ),

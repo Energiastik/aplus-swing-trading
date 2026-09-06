@@ -1,3 +1,7 @@
+"use client";
+
+import { useLanguage, type DictKey } from "@/lib/i18n";
+
 export function GradeBadge({ grade }: { grade: string | null }) {
   if (!grade) return <span className="badge badge-neutral">—</span>;
   const cls =
@@ -13,16 +17,17 @@ export function GradeBadge({ grade }: { grade: string | null }) {
   return <span className={`badge ${cls}`}>{grade}</span>;
 }
 
-const STAGE_RU: Record<string, string> = {
-  Building: "Building — формируется",
-  Emerging: "Emerging — набирает силу",
-  Leading: "Leading — лидирует",
-  Fading: "Fading — затухает",
-  Lagging: "Lagging — отстаёт",
-  Neutral: "Neutral",
+const STAGE_KEY: Record<string, DictKey> = {
+  Building: "stage_building",
+  Emerging: "stage_emerging",
+  Leading: "stage_leading",
+  Fading: "stage_fading",
+  Lagging: "stage_lagging",
+  Neutral: "stage_neutral",
 };
 
 export function StageBadge({ stage }: { stage: string | null }) {
+  const { t } = useLanguage();
   if (!stage) return <span className="badge badge-neutral">—</span>;
   const cls =
     stage === "Building" || stage === "Emerging"
@@ -32,16 +37,20 @@ export function StageBadge({ stage }: { stage: string | null }) {
       : stage === "Fading" || stage === "Lagging"
       ? "badge-critical"
       : "badge-neutral";
-  return <span className={`badge ${cls}`}>{STAGE_RU[stage] ?? stage}</span>;
+  const key = STAGE_KEY[stage];
+  return <span className={`badge ${cls}`}>{key ? t(key) : stage}</span>;
 }
 
+const REGIME_KEY: Record<string, DictKey> = {
+  AGGRESSIVE: "regime_aggressive",
+  CAUTIOUS: "regime_cautious",
+  NO_TRADE: "regime_no_trade",
+};
+
 export function RegimeModeBadge({ mode }: { mode: string | null }) {
-  const RU: Record<string, string> = {
-    AGGRESSIVE: "АГРЕССИВНЫЙ",
-    CAUTIOUS: "ОСТОРОЖНО",
-    NO_TRADE: "БЕЗ СДЕЛОК",
-  };
+  const { t } = useLanguage();
   const cls =
     mode === "AGGRESSIVE" ? "badge-good" : mode === "CAUTIOUS" ? "badge-warning" : "badge-critical";
-  return <span className={`badge ${cls}`}>{(mode && RU[mode]) ?? mode ?? "—"}</span>;
+  const key = mode ? REGIME_KEY[mode] : undefined;
+  return <span className={`badge ${cls}`}>{key ? t(key) : mode ?? "—"}</span>;
 }

@@ -3,14 +3,17 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useLanguage, type DictKey } from "@/lib/i18n";
+import LangToggle from "@/components/LangToggle";
 
-const ERROR_RU: Record<string, string> = {
-  missing_email_or_password: "Введите email и пароль.",
-  invalid_credentials: "Неверный email или пароль.",
-  login_failed: "Ошибка сервера. Попробуйте ещё раз.",
+const ERROR_KEY: Record<string, DictKey> = {
+  missing_email_or_password: "err_missing_email_or_password",
+  invalid_credentials: "err_invalid_credentials",
+  login_failed: "err_login_failed",
 };
 
 function LoginForm() {
+  const { t } = useLanguage();
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/";
@@ -32,14 +35,15 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(ERROR_RU[data.error] || "Не удалось войти.");
+        const key = ERROR_KEY[data.error];
+        setError(key ? t(key) : t("err_generic_login"));
         setLoading(false);
         return;
       }
       router.push(next);
       router.refresh();
     } catch {
-      setError("Не удалось связаться с сервером.");
+      setError(t("err_network"));
       setLoading(false);
     }
   }
@@ -47,11 +51,14 @@ function LoginForm() {
   return (
     <main className="auth-page">
       <form className="auth-card" onSubmit={onSubmit}>
-        <h1 className="auth-title">A+ Swing Trading</h1>
-        <p className="auth-subtitle">Войдите, чтобы открыть дашборд</p>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.75rem" }}>
+          <LangToggle />
+        </div>
+        <h1 className="auth-title">{t("login_title")}</h1>
+        <p className="auth-subtitle">{t("login_subtitle")}</p>
 
         <label className="auth-label" htmlFor="email">
-          Email
+          {t("email")}
         </label>
         <input
           id="email"
@@ -64,7 +71,7 @@ function LoginForm() {
         />
 
         <label className="auth-label" htmlFor="password">
-          Пароль
+          {t("password")}
         </label>
         <input
           id="password"
@@ -78,11 +85,11 @@ function LoginForm() {
         {error && <p className="auth-error">{error}</p>}
 
         <button type="submit" className="auth-submit" disabled={loading}>
-          {loading ? "Входим…" : "Войти"}
+          {loading ? t("logging_in") : t("login_button")}
         </button>
 
         <p className="auth-switch">
-          Нет аккаунта? <Link href="/register">Зарегистрироваться</Link>
+          {t("no_account")} <Link href="/register">{t("register_link")}</Link>
         </p>
       </form>
     </main>

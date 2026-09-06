@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { RRGPoint } from "@/lib/db";
+import { useLanguage } from "@/lib/i18n";
 
 // Quadrant tints -- reuse the existing status/sequential palette tokens so
 // this reads as part of the same design system, not a bolted-on chart lib.
@@ -36,6 +37,7 @@ interface SeriesInfo {
 }
 
 export default function RRGChart({ points }: { points: RRGPoint[] }) {
+  const { t } = useLanguage();
   const [showThemes, setShowThemes] = useState(false);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
@@ -65,7 +67,7 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
   }, [allSeries]);
 
   if (allSeries.length === 0 || allDates.length === 0) {
-    return <p className="empty-state">Данные RRG (относительная ротация) за этот запуск недоступны.</p>;
+    return <p className="empty-state">{t("rrg_unavailable")}</p>;
   }
 
   const endIdx = windowEnd ?? allDates.length - 1;
@@ -103,11 +105,10 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem", gap: "1rem", flexWrap: "wrap" }}>
         <p className="meta-line" style={{ margin: 0 }}>
-          Ось X — JdK RS-Ratio (сила против SPY), ось Y — JdK RS-Momentum (ускорение). Наведите на
-          хвост, чтобы выделить сектор; кликните по метке ниже, чтобы скрыть/показать его.
+          {t("rrg_axes_note")}
         </p>
         <button className="theme-card-expand" onClick={() => setShowThemes((v) => !v)} style={{ flexShrink: 0 }}>
-          {showThemes ? "Только 11 секторов" : "+ 14 тем"}
+          {showThemes ? t("rrg_only_sectors") : t("rrg_add_themes")}
         </button>
       </div>
 
@@ -138,16 +139,16 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
           ))}
 
           <text x={M + 6} y={M + 16} fontSize="10.5" fill="#7fb4f0" fontFamily="var(--font-mono)" letterSpacing="0.05em">
-            УЛУЧШЕНИЕ
+            {t("rrg_quadrant_improving")}
           </text>
           <text x={W - M - 6} y={M + 16} fontSize="10.5" fill="#4ade80" textAnchor="end" fontFamily="var(--font-mono)" letterSpacing="0.05em">
-            ЛИДЕРЫ
+            {t("rrg_quadrant_leading")}
           </text>
           <text x={M + 6} y={H - M - 8} fontSize="10.5" fill="#f87171" fontFamily="var(--font-mono)" letterSpacing="0.05em">
-            ОТСТАЮТ
+            {t("rrg_quadrant_lagging")}
           </text>
           <text x={W - M - 6} y={H - M - 8} fontSize="10.5" fill="#fbbf24" textAnchor="end" fontFamily="var(--font-mono)" letterSpacing="0.05em">
-            ОСЛАБЛЕНИЕ
+            {t("rrg_quadrant_weakening")}
           </text>
 
           <line x1={midX} y1={M} x2={midX} y2={H - M} stroke="rgba(255,255,255,0.16)" strokeDasharray="3 3" />
@@ -230,7 +231,7 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
       </div>
 
       <div className="rrg-slider-row">
-        <span className="rrg-slider-label">Неделя:</span>
+        <span className="rrg-slider-label">{t("rrg_week_label")}</span>
         <input
           type="range"
           className="rrg-slider"
@@ -242,7 +243,7 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
         <span className="rrg-slider-date">{asOfDate}</span>
         {windowEnd !== null && windowEnd !== allDates.length - 1 && (
           <button className="theme-card-expand" onClick={() => setWindowEnd(null)}>
-            К текущей неделе →
+            {t("rrg_to_current_week")}
           </button>
         )}
       </div>
@@ -265,10 +266,10 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
           );
         })}
         <button className="theme-card-expand" onClick={() => setHidden(new Set())}>
-          Показать все
+          {t("rrg_show_all")}
         </button>
         <button className="theme-card-expand" onClick={() => setHidden(new Set(allSeries.map((s) => s.name)))}>
-          Скрыть все
+          {t("rrg_hide_all")}
         </button>
       </div>
     </div>

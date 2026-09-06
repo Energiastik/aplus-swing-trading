@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/lib/i18n";
 
 export default function LogoutButton() {
+  const { t } = useLanguage();
   const router = useRouter();
 
   async function onClick() {
@@ -13,7 +15,7 @@ export default function LogoutButton() {
 
   return (
     <button onClick={onClick} type="button">
-      Выйти
+      {t("logout")}
     </button>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import TradingViewWidget from "./TradingViewWidget";
 import { StageBadge } from "./Badges";
 import type { ThemeRow } from "@/lib/db";
+import { useLanguage } from "@/lib/i18n";
 
 // Sort so the actionable ones surface first: Building/Emerging (early --
 // what the user is specifically watching for), then Leading, then
@@ -27,15 +28,11 @@ function sortThemes(rows: ThemeRow[]): ThemeRow[] {
 }
 
 export default function ThemeGrid({ rows }: { rows: ThemeRow[] }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   if (rows.length === 0) {
-    return (
-      <p className="empty-state">
-        Данные по темам за этот запуск недоступны — sector-rotation/pipeline.py не
-        вернул результат, или его вывод ещё не прокинут в этот запуск.
-      </p>
-    );
+    return <p className="empty-state">{t("no_theme_data")}</p>;
   }
 
   const sorted = sortThemes(rows);
@@ -57,31 +54,32 @@ export default function ThemeGrid({ rows }: { rows: ThemeRow[] }) {
         gap: "0.85rem",
       }}
     >
-      {sorted.map((t) => {
-        const isOpen = expanded.has(t.etf);
+      {sorted.map((row) => {
+        const isOpen = expanded.has(row.etf);
         return (
-          <div key={t.etf} className="theme-card">
-            <div className="theme-card-header" onClick={() => toggle(t.etf)}>
+          <div key={row.etf} className="theme-card">
+            <div className="theme-card-header" onClick={() => toggle(row.etf)}>
               <div>
-                <div className="theme-card-name">{t.name}</div>
+                <div className="theme-card-name">{row.name}</div>
                 <div className="theme-card-etf">
-                  {t.etf} · {t.kind === "Theme" ? "тема" : "сектор"}
+                  {row.etf} · {row.kind === "Theme" ? t("kind_theme") : t("kind_sector")}
                 </div>
               </div>
-              <StageBadge stage={t.status} />
+              <StageBadge stage={row.status} />
             </div>
             <div className="theme-card-stats">
               <span>
-                SRS <b>{t.srs != null ? t.srs.toFixed(2) : "—"}</b>
+                {t("srs_label")} <b>{row.srs != null ? row.srs.toFixed(2) : "—"}</b>
               </span>
               <span>
-                Δ3Д <b>{t.d3d != null ? (t.d3d >= 0 ? "+" : "") + t.d3d.toFixed(2) : "—"}</b>
+                {t("delta3d_label")}{" "}
+                <b>{row.d3d != null ? (row.d3d >= 0 ? "+" : "") + row.d3d.toFixed(2) : "—"}</b>
               </span>
               <span>
-                Ширина{" "}
+                {t("breadth_label")}{" "}
                 <b>
-                  {t.breadth_pct != null ? `${t.breadth_pct.toFixed(0)}%` : "—"}
-                  {t.breadth_trend === "up" ? " ↑" : t.breadth_trend === "down" ? " ↓" : ""}
+                  {row.breadth_pct != null ? `${row.breadth_pct.toFixed(0)}%` : "—"}
+                  {row.breadth_trend === "up" ? " ↑" : row.breadth_trend === "down" ? " ↓" : ""}
                 </b>
               </span>
             </div>
@@ -89,15 +87,15 @@ export default function ThemeGrid({ rows }: { rows: ThemeRow[] }) {
               <div className="tv-frame" style={{ marginTop: "0.6rem" }}>
                 <span className="tv-sweep" />
                 <TradingViewWidget
-                  symbol={t.tv_symbol || t.etf}
+                  symbol={row.tv_symbol || row.etf}
                   height={280}
                   config={{ range: "3M", hide_side_toolbar: true }}
                 />
               </div>
             )}
             {!isOpen && (
-              <button className="theme-card-expand" onClick={() => toggle(t.etf)}>
-                Показать график за 3 месяца ▾
+              <button className="theme-card-expand" onClick={() => toggle(row.etf)}>
+                {t("show_chart_3m")}
               </button>
             )}
           </div>

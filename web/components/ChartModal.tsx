@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import TradingViewWidget from "./TradingViewWidget";
 import type { Top10Row } from "@/lib/db";
+import { useLanguage, pickText } from "@/lib/i18n";
 
 function fmtUsd(v: number | null): string {
   if (v == null) return "—";
@@ -23,10 +24,13 @@ function fmtNum(v: number | null, digits = 2): string {
   return v.toFixed(digits);
 }
 
-function fmtNewsDate(iso?: string): string {
+function fmtNewsDate(iso: string | undefined, lang: "ru" | "en"): string {
   if (!iso) return "";
   try {
-    return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+    return new Date(iso).toLocaleDateString(lang === "en" ? "en-US" : "ru-RU", {
+      day: "numeric",
+      month: "short",
+    });
   } catch {
     return "";
   }
@@ -35,6 +39,7 @@ function fmtNewsDate(iso?: string): string {
 type Tab = "chart" | "fundamentals" | "news";
 
 export default function ChartModal({ row, onClose }: { row: Top10Row; onClose: () => void }) {
+  const { lang, t } = useLanguage();
   const [tab, setTab] = useState<Tab>("chart");
 
   useEffect(() => {
@@ -46,6 +51,7 @@ export default function ChartModal({ row, onClose }: { row: Top10Row; onClose: (
   }, [onClose]);
 
   const news = row.news ?? [];
+  const businessSummary = pickText(lang, row.business_summary, row.business_summary_en);
 
   return (
     <div
@@ -88,7 +94,7 @@ export default function ChartModal({ row, onClose }: { row: Top10Row; onClose: (
           </span>
           <button
             onClick={onClose}
-            aria-label="Закрыть"
+            aria-label={t("close")}
             style={{
               background: "rgba(255,255,255,0.06)",
               border: "1px solid var(--border-soft)",
@@ -105,11 +111,13 @@ export default function ChartModal({ row, onClose }: { row: Top10Row; onClose: (
         </div>
 
         <div className="modal-tabs">
-          {([
-            ["chart", "График"],
-            ["fundamentals", "Фундаментал"],
-            ["news", "Новости"],
-          ] as [Tab, string][]).map(([key, label]) => (
+          {(
+            [
+              ["chart", t("tab_chart")],
+              ["fundamentals", t("tab_fundamentals")],
+              ["news", t("tab_news")],
+            ] as [Tab, string][]
+          ).map(([key, label]) => (
             <button
               key={key}
               className={`modal-tab ${tab === key ? "modal-tab-active" : ""}`}
@@ -131,40 +139,40 @@ export default function ChartModal({ row, onClose }: { row: Top10Row; onClose: (
           <div>
             <div className="stat-grid" style={{ marginTop: 0 }}>
               <div className="stat-tile">
-                <div className="stat-label">P/E</div>
+                <div className="stat-label">{t("pe_ratio")}</div>
                 <div className="stat-value">{fmtNum(row.pe_ratio, 1)}</div>
               </div>
               <div className="stat-tile">
-                <div className="stat-label">Forward P/E</div>
+                <div className="stat-label">{t("forward_pe")}</div>
                 <div className="stat-value">{fmtNum(row.forward_pe, 1)}</div>
               </div>
               <div className="stat-tile">
-                <div className="stat-label">EPS</div>
+                <div className="stat-label">{t("eps")}</div>
                 <div className="stat-value">{fmtNum(row.eps)}</div>
               </div>
               <div className="stat-tile">
-                <div className="stat-label">Рост EPS</div>
+                <div className="stat-label">{t("eps_growth")}</div>
                 <div className="stat-value">{fmtPct(row.eps_growth)}</div>
               </div>
               <div className="stat-tile">
-                <div className="stat-label">Выручка</div>
+                <div className="stat-label">{t("revenue")}</div>
                 <div className="stat-value">{fmtUsd(row.revenue_usd)}</div>
               </div>
               <div className="stat-tile">
-                <div className="stat-label">Рост выручки</div>
+                <div className="stat-label">{t("revenue_growth")}</div>
                 <div className="stat-value">{fmtPct(row.revenue_growth)}</div>
               </div>
               <div className="stat-tile">
-                <div className="stat-label">Долг / Капитал</div>
+                <div className="stat-label">{t("debt_to_equity")}</div>
                 <div className="stat-value">{fmtNum(row.debt_to_equity)}</div>
               </div>
             </div>
-            {row.business_summary ? (
+            {businessSummary ? (
               <p className="verdict-reasoning" style={{ marginTop: "1rem" }}>
-                {row.business_summary}
+                {businessSummary}
               </p>
             ) : (
-              <p className="empty-state">Описание компании недоступно за этот запуск.</p>
+              <p className="empty-state">{t("no_business_summary")}</p>
             )}
           </div>
         )}
@@ -172,25 +180,29 @@ export default function ChartModal({ row, onClose }: { row: Top10Row; onClose: (
         {tab === "news" && (
           <div>
             {news.length === 0 ? (
-              <p className="empty-state">Новости недоступны за этот запуск.</p>
+              <p className="empty-state">{t("no_news")}</p>
             ) : (
-              news.slice(0, 3).map((n, i) => (
-                <div key={i} className="news-item">
-                  <div className="news-item-header">
-                    {n.url ? (
-                      <a href={n.url} target="_blank" rel="noopener noreferrer">
-                        {n.title}
-                      </a>
-                    ) : (
-                      <span>{n.title}</span>
-                    )}
-                    {n.published_at && (
-                      <span className="news-item-date">{fmtNewsDate(n.published_at)}</span>
-                    )}
+              news.slice(0, 3).map((n, i) => {
+                const title = pickText(lang, n.title, n.title_en);
+                const summary = pickText(lang, n.summary, n.summary_en);
+                return (
+                  <div key={i} className="news-item">
+                    <div className="news-item-header">
+                      {n.url ? (
+                        <a href={n.url} target="_blank" rel="noopener noreferrer">
+                          {title}
+                        </a>
+                      ) : (
+                        <span>{title}</span>
+                      )}
+                      {n.published_at && (
+                        <span className="news-item-date">{fmtNewsDate(n.published_at, lang)}</span>
+                      )}
+                    </div>
+                    {summary && <p className="news-item-summary">{summary}</p>}
                   </div>
-                  {n.summary && <p className="news-item-summary">{n.summary}</p>}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

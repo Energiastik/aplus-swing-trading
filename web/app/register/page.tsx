@@ -3,16 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useLanguage, type DictKey } from "@/lib/i18n";
+import LangToggle from "@/components/LangToggle";
 
-const ERROR_RU: Record<string, string> = {
-  missing_email_or_password: "Введите email и пароль.",
-  invalid_email: "Некорректный email.",
-  password_too_short: "Пароль должен быть не короче 8 символов.",
-  email_already_registered: "Этот email уже зарегистрирован — войдите вместо регистрации.",
-  register_failed: "Ошибка сервера. Попробуйте ещё раз.",
+const ERROR_KEY: Record<string, DictKey> = {
+  missing_email_or_password: "err_missing_email_or_password",
+  invalid_email: "err_invalid_email",
+  password_too_short: "err_password_too_short",
+  email_already_registered: "err_email_already_registered",
+  register_failed: "err_register_failed",
 };
 
 export default function RegisterPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,14 +35,15 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(ERROR_RU[data.error] || "Не удалось зарегистрироваться.");
+        const key = ERROR_KEY[data.error];
+        setError(key ? t(key) : t("err_generic_register"));
         setLoading(false);
         return;
       }
       router.push("/");
       router.refresh();
     } catch {
-      setError("Не удалось связаться с сервером.");
+      setError(t("err_network"));
       setLoading(false);
     }
   }
@@ -47,16 +51,19 @@ export default function RegisterPage() {
   return (
     <main className="auth-page">
       <form className="auth-card" onSubmit={onSubmit}>
-        <h1 className="auth-title">A+ Swing Trading</h1>
-        <p className="auth-subtitle">Создайте аккаунт для доступа к дашборду</p>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.75rem" }}>
+          <LangToggle />
+        </div>
+        <h1 className="auth-title">{t("login_title")}</h1>
+        <p className="auth-subtitle">{t("register_subtitle")}</p>
 
         <label className="auth-label" htmlFor="name">
-          Имя (необязательно)
+          {t("name_optional")}
         </label>
         <input id="name" type="text" className="auth-input" value={name} onChange={(e) => setName(e.target.value)} />
 
         <label className="auth-label" htmlFor="email">
-          Email
+          {t("email")}
         </label>
         <input
           id="email"
@@ -69,7 +76,7 @@ export default function RegisterPage() {
         />
 
         <label className="auth-label" htmlFor="password">
-          Пароль (минимум 8 символов)
+          {t("password_min")}
         </label>
         <input
           id="password"
@@ -84,11 +91,11 @@ export default function RegisterPage() {
         {error && <p className="auth-error">{error}</p>}
 
         <button type="submit" className="auth-submit" disabled={loading}>
-          {loading ? "Создаём…" : "Зарегистрироваться"}
+          {loading ? t("creating") : t("register_button")}
         </button>
 
         <p className="auth-switch">
-          Уже есть аккаунт? <Link href="/login">Войти</Link>
+          {t("have_account")} <Link href="/login">{t("login_link")}</Link>
         </p>
       </form>
     </main>

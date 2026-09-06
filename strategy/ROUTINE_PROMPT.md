@@ -88,14 +88,21 @@ zero-candidate day:
    web-dashboard-only -- it doesn't appear in the PDF, so nothing to
    translate here.
 
-   Write EVERY free-text field in Russian: sector_rotation_highlights,
-   top10[].explanation, verdicts[].reasoning, footer_note, vix_note,
-   geopolitical[].headline/summary (write these in Russian directly when you
-   synthesize them in step 0 — no separate translation pass needed). The PDF
-   template's own labels/headers are already Russian in code — you're
-   responsible for the narrative content matching. Keep tickers, prices, and
-   standard trading shorthand (EMA, RSI, R/R, VDU, SPY, grades A-F) as-is;
-   translate the surrounding explanation. Write it to output/results_<date>.json.
+   Write EVERY free-text field in BOTH Russian (the primary field) AND
+   English (the same field name + `_en` suffix): sector_rotation_highlights
+   / sector_rotation_highlights_en, top10[].explanation / explanation_en,
+   verdicts[].reasoning / reasoning_en, footer_note / footer_note_en,
+   regime.vix_note / regime.vix_note_en, geopolitical[].headline+summary /
+   headline_en+summary_en. The dashboard's language toggle reads the `_en`
+   field when set and falls back to the Russian one otherwise -- an omitted
+   `_en` field just means that item shows in Russian regardless of the
+   toggle, it's never a hard error, but write both whenever you can. Write
+   each pair together as you compose that finding (not a separate
+   translation pass after the fact) -- same underlying analysis, two
+   renderings of it. Keep tickers, prices, and standard trading shorthand
+   (EMA, RSI, R/R, VDU, SPY, grades A-F) as-is in both languages. The PDF
+   itself stays Russian-only (agent/pdf_report.py never reads any `_en`
+   field) -- these are dashboard-only. Write it to output/results_<date>.json.
 
 2. Build the PDF:
    python -m agent.pdf_report output/results_<date>.json output/swing_report_<date>.pdf
@@ -136,14 +143,19 @@ zero-candidate day:
       python -m agent.tv_symbol output/results_<date>.json
 
       This adds business_summary and news[].title/summary in ENGLISH (that's
-      what yfinance returns natively) -- yfinance can't translate, so you
-      must: open output/results_<date>.json, translate every top10[].
-      business_summary and every top10[].news[].title/summary into Russian
-      (same rule as everything else in this file — company/ticker names,
-      dollar figures, and dates stay as-is; translate the prose), and save
-      it back before the next step. Don't skip this even though it wasn't
-      needed for the fields in step 1 — those come from your own analysis
-      already in Russian, these come from yfinance already in English.
+      what yfinance returns natively). Open output/results_<date>.json and,
+      for every top10[] entry: copy that English business_summary verbatim
+      into business_summary_en, and each news[].title/summary verbatim into
+      that item's title_en/summary_en -- yfinance already gives you the
+      English version for free, don't waste effort re-writing it. THEN
+      translate business_summary and each news[].title/summary into Russian
+      in the original fields (same rule as everything else in this file —
+      company/ticker names, dollar figures, and dates stay as-is; translate
+      the prose), and save it back before the next step. Don't skip this
+      even though it wasn't needed for the fields in step 1 -- those you
+      wrote yourself in both languages already; these come from yfinance
+      starting in English only, so the Russian side is the one that needs
+      the extra pass here, not the English side.
 
    b. POST the annotated file to the dashboard's ingest endpoint. Same
       situation as the Telegram credentials: no secrets mechanism exists here,

@@ -872,6 +872,30 @@ tr:hover td {
   color: var(--text-muted);
 }
 
+.lang-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.lang-toggle button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.25rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+
+.lang-toggle-active {
+  background: var(--gold-soft);
+  color: var(--gold) !important;
+}
+
 .session-bar button {
   background: transparent;
   border: 1px solid var(--border-soft);

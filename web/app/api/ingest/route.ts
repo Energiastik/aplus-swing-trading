@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS runs (
 );
 ALTER TABLE runs ADD COLUMN IF NOT EXISTS macro JSONB;
 ALTER TABLE runs ADD COLUMN IF NOT EXISTS geopolitical JSONB;
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS sector_highlights_en TEXT;
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS footer_note_en TEXT;
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS vix_note_en TEXT;
 CREATE TABLE IF NOT EXISTS sector_table (
     id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(id) ON DELETE CASCADE,
@@ -60,6 +63,8 @@ ALTER TABLE top10 ADD COLUMN IF NOT EXISTS eps_growth REAL;
 ALTER TABLE top10 ADD COLUMN IF NOT EXISTS debt_to_equity REAL;
 ALTER TABLE top10 ADD COLUMN IF NOT EXISTS business_summary TEXT;
 ALTER TABLE top10 ADD COLUMN IF NOT EXISTS news JSONB;
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS explanation_en TEXT;
+ALTER TABLE top10 ADD COLUMN IF NOT EXISTS business_summary_en TEXT;
 CREATE TABLE IF NOT EXISTS theme_rotation (
     id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(id) ON DELETE CASCADE,
@@ -76,6 +81,7 @@ CREATE TABLE IF NOT EXISTS verdicts (
     ticker TEXT, tv_symbol TEXT, entry REAL, stop REAL, target REAL, rr TEXT,
     expected_gain_pct TEXT, reasoning TEXT
 );
+ALTER TABLE verdicts ADD COLUMN IF NOT EXISTS reasoning_en TEXT;
 CREATE TABLE IF NOT EXISTS rrg_points (
     id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(id) ON DELETE CASCADE,
@@ -105,6 +111,7 @@ interface IngestBody {
     mode?: string;
     vix?: number;
     vix_note?: string;
+    vix_note_en?: string;
     size_multiplier?: number;
     checks?: Record<string, boolean>;
   };
@@ -118,9 +125,11 @@ interface IngestBody {
     jobless_claims_k?: MacroReading;
     gdp_growth_pct?: MacroReading;
   };
-  geopolitical?: Array<{ headline?: string; summary?: string }>;
+  geopolitical?: Array<{ headline?: string; summary?: string; headline_en?: string; summary_en?: string }>;
   sector_rotation_highlights?: string;
+  sector_rotation_highlights_en?: string;
   footer_note?: string;
+  footer_note_en?: string;
   sector_table?: Array<{
     rank?: number;
     etf?: string;
@@ -171,6 +180,7 @@ interface IngestBody {
     rr?: string;
     earnings_days?: string;
     explanation?: string;
+    explanation_en?: string;
     pe_ratio?: number;
     forward_pe?: number;
     revenue_usd?: number;
@@ -179,7 +189,8 @@ interface IngestBody {
     eps_growth?: number;
     debt_to_equity?: number;
     business_summary?: string;
-    news?: Array<{ title?: string; url?: string; published_at?: string; summary?: string }>;
+    business_summary_en?: string;
+    news?: Array<{ title?: string; url?: string; published_at?: string; summary?: string; title_en?: string; summary_en?: string }>;
   }>;
   verdicts?: Array<{
     ticker?: string;
@@ -190,6 +201,7 @@ interface IngestBody {
     rr?: string;
     expected_gain_pct?: string;
     reasoning?: string;
+    reasoning_en?: string;
   }>;
 }
 
@@ -227,14 +239,17 @@ export async function POST(req: NextRequest) {
     const r = body.regime;
     const runRes = await client.query(
       `INSERT INTO runs (date, regime_score, regime_mode, vix, vix_note, size_multiplier,
-                          regime_checks, sector_highlights, footer_note, macro, geopolitical)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                          regime_checks, sector_highlights, footer_note, macro, geopolitical,
+                          sector_highlights_en, footer_note_en, vix_note_en)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        ON CONFLICT (date) DO UPDATE SET
          regime_score = EXCLUDED.regime_score, regime_mode = EXCLUDED.regime_mode,
          vix = EXCLUDED.vix, vix_note = EXCLUDED.vix_note,
          size_multiplier = EXCLUDED.size_multiplier, regime_checks = EXCLUDED.regime_checks,
          sector_highlights = EXCLUDED.sector_highlights, footer_note = EXCLUDED.footer_note,
-         macro = EXCLUDED.macro, geopolitical = EXCLUDED.geopolitical
+         macro = EXCLUDED.macro, geopolitical = EXCLUDED.geopolitical,
+         sector_highlights_en = EXCLUDED.sector_highlights_en,
+         footer_note_en = EXCLUDED.footer_note_en, vix_note_en = EXCLUDED.vix_note_en
        RETURNING id`,
       [
         body.date,
@@ -248,6 +263,9 @@ export async function POST(req: NextRequest) {
         body.footer_note ?? null,
         body.macro ? JSON.stringify(body.macro) : null,
         body.geopolitical ? JSON.stringify(body.geopolitical) : null,
+        body.sector_rotation_highlights_en ?? null,
+        body.footer_note_en ?? null,
+        r.vix_note_en ?? null,
       ]
     );
     const runId = runRes.rows[0].id;
@@ -284,8 +302,8 @@ export async function POST(req: NextRequest) {
         `INSERT INTO top10 (run_id, rank, ticker, tv_symbol, composite_score, chart_grade,
                              sector_stage, rr, earnings_days, explanation, pe_ratio, forward_pe,
                              revenue_usd, revenue_growth, eps, eps_growth, debt_to_equity,
-                             business_summary, news)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+                             business_summary, news, explanation_en, business_summary_en)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
         [
           runId, rank++, c.ticker ?? null, c.tv_symbol ?? c.ticker ?? null,
           c.composite_score ?? null, c.chart_grade ?? null, c.sector_stage ?? null,
@@ -294,6 +312,7 @@ export async function POST(req: NextRequest) {
           c.revenue_growth ?? null, c.eps ?? null, c.eps_growth ?? null,
           c.debt_to_equity ?? null, c.business_summary ?? null,
           c.news ? JSON.stringify(c.news) : null,
+          c.explanation_en ?? null, c.business_summary_en ?? null,
         ]
       );
     }
@@ -329,12 +348,12 @@ export async function POST(req: NextRequest) {
     for (const v of body.verdicts ?? []) {
       await client.query(
         `INSERT INTO verdicts (run_id, ticker, tv_symbol, entry, stop, target, rr,
-                                expected_gain_pct, reasoning)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                                expected_gain_pct, reasoning, reasoning_en)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           runId, v.ticker ?? null, v.tv_symbol ?? v.ticker ?? null, v.entry ?? null,
           v.stop ?? null, v.target ?? null, v.rr ?? null, v.expected_gain_pct ?? null,
-          v.reasoning ?? null,
+          v.reasoning ?? null, v.reasoning_en ?? null,
         ]
       );
     }
