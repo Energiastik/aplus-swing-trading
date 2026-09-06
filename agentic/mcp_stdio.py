@@ -26,6 +26,7 @@ mcp = FastMCP("swing")
 
 mcp.tool(description="Day-3 weekly market regime checklist (score 0-4, mode)")(T.t_market_regime)
 mcp.tool(description="11 sector ETFs vs SPY over 1W/4W/12W, recency-weighted")(T.t_sector_rotation)
+mcp.tool(description="Macro snapshot from FRED: CPI inflation, Fed funds rate, NFP change, jobless claims, GDP growth (actual vs previous)")(T.t_macro_snapshot)
 mcp.tool(description="Day-4 screener funnel — candidate tickers")(T.t_run_screener)
 mcp.tool(description="Full technical read for a ticker (EMA/RSI/VDU/pivot/entry/stop/Fibonacci/anchored VWAP/liquidity sweep/volume-profile POC-VAH-VAL/historical S-R zones)")(T.t_technical_read)
 mcp.tool(description="Confluence count (EMA/Fib/VWAP/liquidity-sweep/POC-VA/S-R/options walls) near a proposed entry price")(T.t_confluence_count)

@@ -69,6 +69,63 @@ def _styles():
     return ss
 
 
+def _fmt_delta(d: dict, unit: str = "", sign: bool = False) -> str:
+    """d: {"actual": float, "actual_date": str, "previous": float, "previous_date": str}."""
+    if not d or d.get("actual") is None:
+        return "нет данных"
+    a = d["actual"]
+    s = f"{'+' if sign and a > 0 else ''}{a:g}{unit}"
+    if d.get("previous") is not None:
+        p = d["previous"]
+        s += f" (пред. {'+' if sign and p > 0 else ''}{p:g}{unit})"
+    if d.get("actual_date"):
+        s += f" · {d['actual_date']}"
+    return s
+
+
+def _macro_block(data: dict, ss) -> list:
+    m = data.get("macro")
+    geo = data.get("geopolitical")
+    if not m and not geo:
+        return []
+    flow = [Paragraph("Макро и геополитика", ss["H1"])]
+    if m and m.get("available"):
+        rows = [
+            ["Инфляция (CPI, г/г)", _fmt_delta(m.get("inflation_cpi_yoy_pct", {}), "%")],
+            ["Ставка ФРС", _fmt_delta(m.get("fed_funds_rate_pct", {}), "%")],
+            ["Нонфарм (NFP, изм.)", _fmt_delta(m.get("nonfarm_payrolls_change_k", {}), "K", sign=True)],
+            ["Заявки на пособие", _fmt_delta(m.get("jobless_claims_k", {}), "K")],
+            ["Рост ВВП (год. темп)", _fmt_delta(m.get("gdp_growth_pct", {}), "%")],
+        ]
+        t = Table(rows, hAlign="LEFT", colWidths=[1.8 * inch, 4.0 * inch])
+        t.setStyle(TableStyle([
+            ("FONTNAME", (0, 0), (-1, -1), "DejaVuSans"),
+            ("FONTNAME", (0, 0), (0, -1), "DejaVuSans-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, colors.HexColor("#f4f2ec")]),
+            ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cccccc")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        flow.append(t)
+    elif m:
+        flow.append(Paragraph(f"Макро-данные недоступны ({m.get('error', 'нет ключа FRED')}).",
+                              ss["Small"]))
+    if geo:
+        flow.append(Spacer(1, 8))
+        flow.append(Paragraph("Геополитика", ss["H2"]))
+        for item in geo:
+            headline = item.get("headline", "") if isinstance(item, dict) else str(item)
+            summary = item.get("summary", "") if isinstance(item, dict) else ""
+            flow.append(Paragraph(f"<b>{headline}</b>", ss["Body"]))
+            if summary:
+                flow.append(Paragraph(summary, ss["Small"]))
+            flow.append(Spacer(1, 4))
+    flow.append(Spacer(1, 10))
+    return flow
+
+
 def _regime_block(data: dict, ss) -> list:
     r = data["regime"]
     mode_ru = MODE_RU.get(r.get("mode", ""), r.get("mode", ""))
@@ -173,6 +230,14 @@ def build_pdf(data: dict, out_path: str | Path) -> Path:
       "regime": {"score": int, "mode": "AGGRESSIVE"|"CAUTIOUS"|"NO_TRADE",
                  "vix": float|None, "vix_note": str (Russian),
                  "size_multiplier": float, "checks": {label: bool}},
+      "macro": {"available": bool, "error": str|None,
+                "inflation_cpi_yoy_pct": {"actual","actual_date","previous","previous_date"},
+                "fed_funds_rate_pct": {...same shape...},
+                "nonfarm_payrolls_change_k": {...}, "jobless_claims_k": {...},
+                "gdp_growth_pct": {...}} -- from t_macro_snapshot, informational only.
+      "geopolitical": [{"headline","summary"}] -- 2-3 items, Russian, from a live
+          web search each run. Omit the key entirely on a day nothing warrants it
+          rather than padding with filler.
       "sector_table": [{"rank","etf","sector","w1","w4","w12","weighted"}],
       "sector_rotation_highlights": "Russian free text",
       "all_candidates": [{"ticker","sector"}] or [ticker, ...] -- every name
@@ -196,6 +261,7 @@ def build_pdf(data: dict, out_path: str | Path) -> Path:
                              leftMargin=0.6 * inch, rightMargin=0.6 * inch)
     flow = [
         Paragraph(f"A+ Swing Trading — Ежедневный Скрининг · {data.get('date', '')}", ss["H1"]),
+        *_macro_block(data, ss),
         *_regime_block(data, ss),
         Spacer(1, 10),
         Paragraph("Ротация секторов", ss["H2"]),

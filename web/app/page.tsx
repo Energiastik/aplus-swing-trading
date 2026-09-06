@@ -66,6 +66,80 @@ export default async function DashboardPage() {
         потери капитала.
       </div>
 
+      {(run.macro || (run.geopolitical && run.geopolitical.length > 0)) && (
+        <section className="panel">
+          <h2>Макро и геополитика</h2>
+          {run.macro?.available ? (
+            <div className="stat-grid">
+              <div className="stat-tile">
+                <div className="stat-label">Инфляция (CPI, г/г)</div>
+                <div className="stat-value">
+                  {run.macro.inflation_cpi_yoy_pct?.actual ?? "—"}%
+                </div>
+                {run.macro.inflation_cpi_yoy_pct?.previous != null && (
+                  <div className="meta-line">
+                    пред. {run.macro.inflation_cpi_yoy_pct.previous}%
+                  </div>
+                )}
+              </div>
+              <div className="stat-tile">
+                <div className="stat-label">Ставка ФРС</div>
+                <div className="stat-value">
+                  {run.macro.fed_funds_rate_pct?.actual ?? "—"}%
+                </div>
+                {run.macro.fed_funds_rate_pct?.previous != null && (
+                  <div className="meta-line">пред. {run.macro.fed_funds_rate_pct.previous}%</div>
+                )}
+              </div>
+              <div className="stat-tile">
+                <div className="stat-label">Нонфарм (NFP)</div>
+                <div className="stat-value">
+                  {run.macro.nonfarm_payrolls_change_k?.actual != null
+                    ? `${run.macro.nonfarm_payrolls_change_k.actual > 0 ? "+" : ""}${run.macro.nonfarm_payrolls_change_k.actual}K`
+                    : "—"}
+                </div>
+                {run.macro.nonfarm_payrolls_change_k?.previous != null && (
+                  <div className="meta-line">
+                    пред. {run.macro.nonfarm_payrolls_change_k.previous > 0 ? "+" : ""}
+                    {run.macro.nonfarm_payrolls_change_k.previous}K
+                  </div>
+                )}
+              </div>
+              <div className="stat-tile">
+                <div className="stat-label">Заявки на пособие</div>
+                <div className="stat-value">{run.macro.jobless_claims_k?.actual ?? "—"}K</div>
+                {run.macro.jobless_claims_k?.previous != null && (
+                  <div className="meta-line">пред. {run.macro.jobless_claims_k.previous}K</div>
+                )}
+              </div>
+              <div className="stat-tile">
+                <div className="stat-label">Рост ВВП (год. темп)</div>
+                <div className="stat-value">{run.macro.gdp_growth_pct?.actual ?? "—"}%</div>
+                {run.macro.gdp_growth_pct?.previous != null && (
+                  <div className="meta-line">пред. {run.macro.gdp_growth_pct.previous}%</div>
+                )}
+              </div>
+            </div>
+          ) : (
+            run.macro && (
+              <p className="meta-line">
+                Макро-данные недоступны{run.macro.error ? ` (${run.macro.error})` : ""}.
+              </p>
+            )
+          )}
+          {run.geopolitical && run.geopolitical.length > 0 && (
+            <div style={{ marginTop: "1rem" }}>
+              {run.geopolitical.map((g, i) => (
+                <div key={i} style={{ marginBottom: "0.75rem" }}>
+                  <b>{g.headline}</b>
+                  {g.summary && <p className="meta-line">{g.summary}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       <StageHeader n={1} title="Здоровье рынка" subtitle="Общий режим и готовность рисковать" />
       {/* Regime / market health */}
       <section className="panel">

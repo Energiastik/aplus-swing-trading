@@ -15,6 +15,22 @@ agent receives the "Visual Criteria" section as its system prompt context.
 - "Screener is a FILTER, not a SIGNAL" — the agent ranks and recommends; the human decides.
 - No setup? Wait. Never force a setup out of nothing.
 
+## 0.5. Macro & Geopolitical Context (informational — opens the report, gates nothing)
+Read this first, every run, before Market Regime — it's context for interpreting the
+rest of the scan, not a filter. Nothing here rejects a setup or changes position size;
+that's what Section 1 (Market Regime) is for.
+- **Macro snapshot** (`t_macro_snapshot`, sourced from FRED — the Fed's own data,
+  free API key required, see `agent/macro.py`): inflation (CPI YoY%), Fed funds rate,
+  nonfarm payrolls change, initial jobless claims, real GDP growth — each as actual
+  vs. previous reading. If the key isn't available this run, report macro as
+  unavailable honestly; never fabricate a number.
+- **Geopolitical summary** (2–3 items, live web search each run — not a fixed feed):
+  current events plausibly relevant to markets (central bank moves, major conflicts/
+  trade tensions, elections, commodity shocks). Each item: a one-line headline + a
+  1–2 sentence summary, written in your own words from what you actually read this
+  run. Skip it entirely on a quiet day rather than padding with something irrelevant
+  — same "no setup, no forced output" discipline as everything else in this file.
+
 ## 1. Market Regime (gate #1 — checked before anything else)
 Weekly regime checklist (Day 3), scored 0–4:
 1. SPY close > EMA 200 (daily)?

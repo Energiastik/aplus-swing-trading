@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from agent import data, market_regime, sector_rotation, screener, technicals, halal, report, options_walls  # noqa: E402
+from agent import data, market_regime, sector_rotation, screener, technicals, halal, report, options_walls, macro  # noqa: E402
 
 
 # ---------- plain functions (shared by both servers) ----------
@@ -27,6 +27,23 @@ def t_market_regime() -> str:
 def t_sector_rotation() -> str:
     df = sector_rotation.score()
     return df.to_json(orient="records")
+
+
+def t_macro_snapshot(fred_api_key: str = "") -> str:
+    """Macro snapshot from FRED: CPI inflation (YoY%), Fed funds rate, nonfarm
+    payrolls change, initial jobless claims, real GDP growth -- each as actual vs.
+    previous reading. Informational context only, not a gate. fred_api_key: a free
+    FRED API key if the user provided one this run (no persistent env var in the
+    automated routine -- pass it through explicitly; if omitted, returns
+    available=false rather than fabricate numbers)."""
+    m = macro.read(api_key=fred_api_key or None)
+    return json.dumps({
+        "available": m.available, "error": m.error,
+        "inflation_cpi_yoy_pct": m.inflation_cpi_yoy_pct,
+        "fed_funds_rate_pct": m.fed_funds_rate_pct,
+        "nonfarm_payrolls_change_k": m.nonfarm_payrolls_change_k,
+        "jobless_claims_k": m.jobless_claims_k,
+        "gdp_growth_pct": m.gdp_growth_pct})
 
 
 def t_run_screener(limit: int = 40) -> str:
@@ -149,6 +166,12 @@ def build_sdk_server():
              "VIX, weekly SPY. Returns score 0-4 and mode.", {})(wrap(t_market_regime)),
         tool("sector_rotation", "Score 11 sector ETFs vs SPY over 1W/4W/12W "
              "(recency-weighted).", {})(wrap(t_sector_rotation)),
+        tool("macro_snapshot", "Macro snapshot from FRED: CPI inflation (YoY%), Fed "
+             "funds rate, nonfarm payrolls change, initial jobless claims, real GDP "
+             "growth -- each actual vs previous reading. Informational only, not a "
+             "gate. fred_api_key: FRED API key if the user provided one this run, "
+             "else omit (returns available=false, never fabricates numbers).",
+             {"fred_api_key": str})(wrap(t_macro_snapshot)),
         tool("run_screener", "Day-4 Finviz funnel (fundamental+technical filters). "
              "Returns candidate tickers with sector/industry.",
              {"limit": int})(wrap(t_run_screener)),

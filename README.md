@@ -10,6 +10,7 @@ Vision агенттің «көзі» — `strategy/vision_prompt.md`.
 ## Pipeline
 | # | Module | Course source | Rule |
 |---|--------|--------------|------|
+| 0 | `macro` + live web search | — | FRED snapshot (CPI/Fed funds/NFP/jobless claims/GDP, actual vs previous) + 2–3 geopolitical items — opens the report, informational only, gates nothing |
 | 1 | `market_regime` | Day 3 weekly checklist + Day 2 VIX | 4/4 aggressive · 2–3 half-size · 0–1 watchlist-only |
 | 2 | `sector_rotation` | Day 2 practicum | 11 ETF vs SPY, 1W/4W/12W, weights 3/2/1 |
 | 3 | `screener` | Day 4 Finviz funnel | 11,500 → ~13 filters, Price×Vol > $10M |
@@ -26,6 +27,8 @@ pip install -r requirements.txt
 export ANTHROPIC_API_KEY="sk-ant-..."      # vision module
 export TELEGRAM_BOT_TOKEN="123:ABC"        # optional
 export TELEGRAM_CHAT_ID="-100..."          # optional
+export MARKETDATA_API_TOKEN="..."          # optional, real options-chain open interest (marketdata.app, free)
+export FRED_API_KEY="..."                  # optional, macro snapshot (fred.stlouisfed.org, free)
 ```
 
 ## Run

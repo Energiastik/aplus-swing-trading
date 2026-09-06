@@ -100,6 +100,28 @@ export interface VerdictRow {
   reasoning: string | null;
 }
 
+export interface MacroReading {
+  actual: number | null;
+  actual_date: string | null;
+  previous: number | null;
+  previous_date: string | null;
+}
+
+export interface Macro {
+  available: boolean;
+  error: string | null;
+  inflation_cpi_yoy_pct?: MacroReading;
+  fed_funds_rate_pct?: MacroReading;
+  nonfarm_payrolls_change_k?: MacroReading;
+  jobless_claims_k?: MacroReading;
+  gdp_growth_pct?: MacroReading;
+}
+
+export interface GeopoliticalItem {
+  headline: string;
+  summary: string;
+}
+
 export interface RunData {
   id: number;
   date: string;
@@ -112,6 +134,8 @@ export interface RunData {
   sector_highlights: string | null;
   footer_note: string | null;
   created_at: string;
+  macro: Macro | null;
+  geopolitical: GeopoliticalItem[] | null;
   sector_table: SectorRow[];
   all_candidates: CandidateRow[];
   top10: Top10Row[];
@@ -123,7 +147,7 @@ export async function getLatestRun(): Promise<RunData | null> {
   const pool = getPool();
   const runRes = await pool.query(
     `SELECT id, date, regime_score, regime_mode, vix, vix_note, size_multiplier,
-            regime_checks, sector_highlights, footer_note, created_at
+            regime_checks, sector_highlights, footer_note, created_at, macro, geopolitical
      FROM runs ORDER BY date DESC LIMIT 1`
   );
   if (runRes.rows.length === 0) return null;

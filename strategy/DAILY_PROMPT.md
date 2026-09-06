@@ -38,9 +38,20 @@ Read strategy/STRATEGY.md fully as the base rulebook, with these standing overri
 - Earnings must be ≥10 trading days away. Check earnings_days for every survivor
   before it reaches the final table, not after.
 - Never invent a number. Every price/volume/date in the output must trace to a tool
-  call or a data pull you actually made this session.
+  call or a data pull you actually made this session — this applies to macro readings
+  and geopolitical items too: if t_macro_snapshot reports available:false, say so;
+  don't estimate CPI/NFP/GDP from memory.
 
 Run the full scan in this order:
+
+0. MACRO & GEOPOLITICAL CONTEXT (STRATEGY.md section 0.5) — call
+   t_macro_snapshot first (pass fred_api_key if one was provided this run, else
+   omit it — report available:false honestly rather than invent numbers).
+   Then do a live web search for current events plausibly relevant to markets
+   (central bank moves, major conflicts/trade tensions, elections, commodity
+   shocks) and write 2-3 items in your own words (headline + 1-2 sentence
+   summary each) — skip it entirely on a quiet day, don't pad. This opens the
+   report; it gates nothing.
 
 1. MARKET REGIME — market_regime tool (or agent/market_regime.py directly if the
    swing MCP server isn't connected — call the underlying functions in

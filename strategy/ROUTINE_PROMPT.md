@@ -35,11 +35,22 @@ MCP tool calls inside this session, not standalone `python -m` commands. If no
 token was provided, just omit it — the module falls back to yfinance
 automatically, no error either way.
 
+Same pattern for FRED_API_KEY if one appears in this routine's live prompt:
+pass it as the `fred_api_key` argument on t_macro_snapshot (DAILY_PROMPT.md
+step 0). If no key was provided, omit it — the tool reports available:false,
+never fabricates numbers. This session also has WebSearch access for step 0's
+geopolitical summary — use it live each run, don't rely on training data for
+current events.
+
 When the scan is complete, do this final step — don't skip it even on a
 zero-candidate day:
 
 1. Assemble everything into a dict matching the schema documented at the top
-   of agent/pdf_report.py: date, regime, sector_table, sector_rotation_highlights,
+   of agent/pdf_report.py: date, macro (from t_macro_snapshot, step 0 — pass
+   through as-is, including available:false if that's what it reported),
+   geopolitical (step 0's 2-3 items, already written in Russian since you
+   generated them live — omit the key entirely on a day nothing warranted
+   it), regime, sector_table, sector_rotation_highlights,
    all_candidates (every ticker the screener returned — tickers at minimum,
    sector if you have it, not just the ones you deep-dived), top10 (up to 10,
    ranked by composite score, REGARDLESS of whether they cleared every hard
@@ -64,7 +75,9 @@ zero-candidate day:
    stay null, don't invent them).
 
    Write EVERY free-text field in Russian: sector_rotation_highlights,
-   top10[].explanation, verdicts[].reasoning, footer_note, vix_note. The PDF
+   top10[].explanation, verdicts[].reasoning, footer_note, vix_note,
+   geopolitical[].headline/summary (write these in Russian directly when you
+   synthesize them in step 0 — no separate translation pass needed). The PDF
    template's own labels/headers are already Russian in code — you're
    responsible for the narrative content matching. Keep tickers, prices, and
    standard trading shorthand (EMA, RSI, R/R, VDU, SPY, grades A-F) as-is;

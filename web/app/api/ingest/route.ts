@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS runs (
     footer_note TEXT,
     created_at TIMESTAMPTZ DEFAULT now()
 );
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS macro JSONB;
+ALTER TABLE runs ADD COLUMN IF NOT EXISTS geopolitical JSONB;
 CREATE TABLE IF NOT EXISTS sector_table (
     id SERIAL PRIMARY KEY,
     run_id INT REFERENCES runs(id) ON DELETE CASCADE,
@@ -82,6 +84,13 @@ CREATE INDEX IF NOT EXISTS idx_verdicts_run ON verdicts(run_id);
 
 let schemaReady = false;
 
+interface MacroReading {
+  actual?: number;
+  actual_date?: string;
+  previous?: number;
+  previous_date?: string;
+}
+
 interface IngestBody {
   date?: string;
   regime?: {
@@ -92,6 +101,16 @@ interface IngestBody {
     size_multiplier?: number;
     checks?: Record<string, boolean>;
   };
+  macro?: {
+    available?: boolean;
+    error?: string | null;
+    inflation_cpi_yoy_pct?: MacroReading;
+    fed_funds_rate_pct?: MacroReading;
+    nonfarm_payrolls_change_k?: MacroReading;
+    jobless_claims_k?: MacroReading;
+    gdp_growth_pct?: MacroReading;
+  };
+  geopolitical?: Array<{ headline?: string; summary?: string }>;
   sector_rotation_highlights?: string;
   footer_note?: string;
   sector_table?: Array<{
@@ -190,13 +209,14 @@ export async function POST(req: NextRequest) {
     const r = body.regime;
     const runRes = await client.query(
       `INSERT INTO runs (date, regime_score, regime_mode, vix, vix_note, size_multiplier,
-                          regime_checks, sector_highlights, footer_note)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                          regime_checks, sector_highlights, footer_note, macro, geopolitical)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT (date) DO UPDATE SET
          regime_score = EXCLUDED.regime_score, regime_mode = EXCLUDED.regime_mode,
          vix = EXCLUDED.vix, vix_note = EXCLUDED.vix_note,
          size_multiplier = EXCLUDED.size_multiplier, regime_checks = EXCLUDED.regime_checks,
-         sector_highlights = EXCLUDED.sector_highlights, footer_note = EXCLUDED.footer_note
+         sector_highlights = EXCLUDED.sector_highlights, footer_note = EXCLUDED.footer_note,
+         macro = EXCLUDED.macro, geopolitical = EXCLUDED.geopolitical
        RETURNING id`,
       [
         body.date,
@@ -208,6 +228,8 @@ export async function POST(req: NextRequest) {
         JSON.stringify(r.checks ?? {}),
         body.sector_rotation_highlights ?? null,
         body.footer_note ?? null,
+        body.macro ? JSON.stringify(body.macro) : null,
+        body.geopolitical ? JSON.stringify(body.geopolitical) : null,
       ]
     );
     const runId = runRes.rows[0].id;
