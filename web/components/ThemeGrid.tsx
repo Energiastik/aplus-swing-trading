@@ -86,7 +86,8 @@ export default function ThemeGrid({ rows }: { rows: ThemeRow[] }) {
               </span>
             </div>
             {isOpen && (
-              <div style={{ marginTop: "0.6rem" }}>
+              <div className="tv-frame" style={{ marginTop: "0.6rem" }}>
+                <span className="tv-sweep" />
                 <TradingViewWidget
                   symbol={t.tv_symbol || t.etf}
                   height={280}

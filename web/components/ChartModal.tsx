@@ -121,7 +121,10 @@ export default function ChartModal({ row, onClose }: { row: Top10Row; onClose: (
         </div>
 
         {tab === "chart" && (
-          <TradingViewWidget symbol={row.tv_symbol} height={520} config={{ range: "6M" }} />
+          <div className="tv-frame">
+            <span className="tv-sweep" />
+            <TradingViewWidget symbol={row.tv_symbol} height={520} config={{ range: "6M" }} />
+          </div>
         )}
 
         {tab === "fundamentals" && (

@@ -6,6 +6,7 @@ import SectorComparison from "@/components/SectorComparison";
 import Top10Table from "@/components/Top10Table";
 import ThemeGrid from "@/components/ThemeGrid";
 import { StageHeader, StageConnector } from "@/components/FunnelStage";
+import { RadarAccent, SonarAccent, OrbitAccent, ScanAccent, LockAccent } from "@/components/Accents";
 
 export const revalidate = 300; // re-render at most every 5 min; data changes ~daily
 
@@ -68,7 +69,7 @@ export default async function DashboardPage() {
 
       {(run.macro || (run.geopolitical && run.geopolitical.length > 0)) && (
         <section className="panel">
-          <h2>Макро и геополитика</h2>
+          <h2><SonarAccent />Макро и геополитика</h2>
           {run.macro?.available ? (
             <div className="stat-grid">
               <div className="stat-tile">
@@ -151,7 +152,7 @@ export default async function DashboardPage() {
       {/* Regime / market health */}
       <section className="panel">
         <h2>
-          Режим рынка <RegimeModeBadge mode={run.regime_mode} />
+          <RadarAccent />Режим рынка <RegimeModeBadge mode={run.regime_mode} />
         </h2>
         <div className="stat-grid">
           <div className="stat-tile">
@@ -195,7 +196,7 @@ export default async function DashboardPage() {
       />
       {/* Sector rotation */}
       <section className="panel">
-        <h2>Ротация секторов</h2>
+        <h2><OrbitAccent />Ротация секторов</h2>
         {run.sector_table.length === 0 ? (
           <p className="empty-state">Нет данных по секторам за этот запуск.</p>
         ) : (
@@ -239,7 +240,7 @@ export default async function DashboardPage() {
 
       {/* Theme / sub-theme rotation */}
       <section className="panel">
-        <h2>Темы и под-темы</h2>
+        <h2><OrbitAccent />Темы и под-темы</h2>
         <p className="meta-line" style={{ marginTop: "-0.5rem", marginBottom: "1rem" }}>
           Building/Emerging — набирают силу или разворачиваются после падения (то,
           что стоит отслеживать). Leading — уже лидируют. Fading/Lagging — теряют
@@ -256,7 +257,7 @@ export default async function DashboardPage() {
       <StageHeader n={4} title="Отбор акций" subtitle="От широкого списка к конкретным сделкам" />
       {/* All candidates */}
       <section className="panel">
-        <h2>Все кандидаты, прошедшие скринер ({run.all_candidates.length})</h2>
+        <h2><ScanAccent />Все кандидаты, прошедшие скринер ({run.all_candidates.length})</h2>
         {run.all_candidates.length === 0 ? (
           <p className="empty-state">Список кандидатов пуст.</p>
         ) : (
@@ -279,7 +280,7 @@ export default async function DashboardPage() {
 
       {/* Verdicts */}
       <section className="panel">
-        <h2>Топ-3 рекомендации — итоговый вердикт</h2>
+        <h2><LockAccent />Топ-3 рекомендации — итоговый вердикт</h2>
         {run.verdicts.length === 0 ? (
           <p className="empty-state">
             Сегодня ни один кандидат не прошёл все фильтры полностью. Не создаём сетап
@@ -308,7 +309,10 @@ export default async function DashboardPage() {
                   </span>
                 </div>
               </div>
-              <TradingViewWidget symbol={v.tv_symbol} />
+              <div className="tv-frame">
+                <span className="tv-sweep" />
+                <TradingViewWidget symbol={v.tv_symbol} />
+              </div>
               {v.reasoning && <p className="verdict-reasoning">{v.reasoning}</p>}
             </div>
           ))

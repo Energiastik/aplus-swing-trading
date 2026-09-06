@@ -1,4 +1,5 @@
 import TradingViewWidget from "./TradingViewWidget";
+import { PulseAccent } from "./Accents";
 
 // Real TradingView symbols, resolved via yfinance's exchange field (see
 // agent/tv_symbol.py) rather than guessed.
@@ -11,7 +12,10 @@ const INDICES: { label: string; symbol: string }[] = [
 export default function MarketOverview() {
   return (
     <section className="panel">
-      <h2>Быстрый обзор рынка</h2>
+      <h2>
+        <PulseAccent />
+        Быстрый обзор рынка
+      </h2>
       <p className="meta-line" style={{ marginTop: "-0.5rem", marginBottom: "1rem" }}>
         2ч, 6 месяцев, EMA + объём. (Примечание: 4-часовой интервал недоступен в
         бесплатном виджете TradingView — он ограничен 2ч максимум для
@@ -37,11 +41,14 @@ export default function MarketOverview() {
             >
               {idx.label}
             </div>
-            <TradingViewWidget
-              symbol={idx.symbol}
-              height={320}
-              config={{ interval: "120", range: "6M", hide_side_toolbar: true }}
-            />
+            <div className="tv-frame">
+              <span className="tv-sweep" />
+              <TradingViewWidget
+                symbol={idx.symbol}
+                height={320}
+                config={{ interval: "120", range: "6M", hide_side_toolbar: true }}
+              />
+            </div>
           </div>
         ))}
       </div>
