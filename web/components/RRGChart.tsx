@@ -36,11 +36,35 @@ interface SeriesInfo {
   points: RRGPoint[]; // this series' own points, sorted by week_date
 }
 
+// Names whose MOST RECENT point sits in the improving or leading quadrant
+// (rs_momentum >= 100, i.e. still accelerating) -- these are what a swing
+// trader actually wants to see by default. Lagging/weakening names are real
+// data, just visual noise until the user asks for them.
+function defaultVisibleNames(points: RRGPoint[]): Set<string> {
+  const latest = new Map<string, RRGPoint>();
+  for (const p of points) {
+    if (p.rs_ratio == null || p.rs_momentum == null) continue;
+    const cur = latest.get(p.name);
+    if (!cur || p.week_date > cur.week_date) latest.set(p.name, p);
+  }
+  const visible = new Set<string>();
+  for (const [name, p] of latest) {
+    if ((p.rs_momentum as number) >= 100) visible.add(name);
+  }
+  return visible;
+}
+
 export default function RRGChart({ points }: { points: RRGPoint[] }) {
   const { t } = useLanguage();
   const [showThemes, setShowThemes] = useState(false);
   const [highlighted, setHighlighted] = useState<string | null>(null);
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const defaultHidden = useMemo(() => {
+    const visible = defaultVisibleNames(points);
+    const h = new Set<string>();
+    for (const p of points) if (!visible.has(p.name)) h.add(p.name);
+    return h;
+  }, [points]);
+  const [hidden, setHidden] = useState<Set<string>>(defaultHidden);
   const [windowEnd, setWindowEnd] = useState<number | null>(null); // null = latest
 
   const allSeries: SeriesInfo[] = useMemo(() => {
@@ -103,7 +127,7 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem", gap: "1rem", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem", gap: "1rem", flexWrap: "wrap" }}>
         <p className="meta-line" style={{ margin: 0 }}>
           {t("rrg_axes_note")}
         </p>
@@ -111,6 +135,9 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
           {showThemes ? t("rrg_only_sectors") : t("rrg_add_themes")}
         </button>
       </div>
+      <p className="meta-line" style={{ margin: "0 0 0.6rem" }}>
+        {t("rrg_default_filter_note")}
+      </p>
 
       <div style={{ overflowX: "auto" }}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 600, maxWidth: 820, display: "block" }}>
@@ -265,6 +292,9 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
             </button>
           );
         })}
+        <button className="theme-card-expand" onClick={() => setHidden(new Set(defaultHidden))}>
+          {t("rrg_reset_default")}
+        </button>
         <button className="theme-card-expand" onClick={() => setHidden(new Set())}>
           {t("rrg_show_all")}
         </button>
