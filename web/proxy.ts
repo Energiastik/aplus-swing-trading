@@ -7,8 +7,10 @@ import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
 //  - /api/ingest -- this is called by the Python routine, a machine with no
 //    browser session, authenticated separately by its own INGEST_SECRET
 //    bearer token. Gating it here would break the daily scan.
+//  - /api/telegram-webhook -- called by Telegram's servers, no browser
+//    session either, authenticated by its own secret-token header instead.
 //  - Next.js internals and static assets.
-const PUBLIC_PATHS = ["/login", "/register", "/api/auth", "/api/ingest"];
+const PUBLIC_PATHS = ["/login", "/register", "/api/auth", "/api/ingest", "/api/telegram-webhook"];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
