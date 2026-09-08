@@ -111,3 +111,14 @@ RRG_TAIL_WEEKS = 8        # default trailing window length shown at once
 RRG_SMOOTH_WINDOW = 10    # weeks, EMA span used to smooth the raw RS ratio
 RRG_Z_WINDOW = 10         # weeks, rolling window for the mean/std normalization
 RRG_MOMENTUM_ROC = 1      # weeks, rate-of-change period feeding RS-Momentum
+
+# Daily variant of the same construction, for the dashboard's daily/weekly
+# RRG toggle -- no resample, computed straight off daily closes. Windows are
+# shorter (in trading days) than the weekly ones since daily data is noisier
+# and a trader scrubbing day-by-day wants a more responsive tail, not a
+# smoothed-out one.
+RRG_DAILY_HISTORY_DAYS = 60   # ~3 months of trading days, stored for scrubbing
+RRG_DAILY_TAIL_DAYS = 15      # default trailing window length shown at once
+RRG_DAILY_SMOOTH_WINDOW = 5   # trading days, EMA span used to smooth the raw RS ratio
+RRG_DAILY_Z_WINDOW = 20       # trading days, rolling window for the mean/std normalization
+RRG_DAILY_MOMENTUM_ROC = 1    # trading days, rate-of-change period feeding RS-Momentum

@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS rrg_points (
     name TEXT, kind TEXT, etf TEXT, tv_symbol TEXT,
     week_date DATE, seq INT, rs_ratio REAL, rs_momentum REAL
 );
+ALTER TABLE rrg_points ADD COLUMN IF NOT EXISTS period TEXT NOT NULL DEFAULT 'W';
 CREATE INDEX IF NOT EXISTS idx_rrg_points_run ON rrg_points(run_id);
 CREATE INDEX IF NOT EXISTS idx_sector_table_run ON sector_table(run_id);
 CREATE INDEX IF NOT EXISTS idx_all_candidates_run ON all_candidates(run_id);
@@ -170,6 +171,9 @@ interface IngestBody {
     seq?: number;
     rs_ratio?: number;
     rs_momentum?: number;
+    /** 'W' (weekly, default) or 'D' (daily) -- which RRG tail this point
+     * belongs to. The dashboard's period toggle filters on this. */
+    period?: string;
   }>;
   top10?: Array<{
     ticker?: string;
@@ -336,11 +340,12 @@ export async function POST(req: NextRequest) {
 
     for (const p of body.rrg_points ?? []) {
       await client.query(
-        `INSERT INTO rrg_points (run_id, name, kind, etf, tv_symbol, week_date, seq, rs_ratio, rs_momentum)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `INSERT INTO rrg_points (run_id, name, kind, etf, tv_symbol, week_date, seq, rs_ratio, rs_momentum, period)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           runId, p.name ?? null, p.kind ?? null, p.etf ?? null, p.tv_symbol ?? p.etf ?? null,
           p.week_date ?? null, p.seq ?? null, p.rs_ratio ?? null, p.rs_momentum ?? null,
+          p.period === "D" ? "D" : "W",
         ]
       );
     }

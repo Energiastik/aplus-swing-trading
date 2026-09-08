@@ -214,6 +214,23 @@ def streak_profile(prices: pd.DataFrame, tickers: list[str],
     }
 
 
+def _rrg_from_series(sector: pd.Series, bench: pd.Series, tail_periods: int,
+                      smooth_window: int, z_window: int, momentum_roc: int) -> pd.DataFrame:
+    """Shared JdK RS-Ratio / RS-Momentum construction, given already-aligned
+    (and, for the weekly variant, already-resampled) sector/bench series."""
+    rs = 100 * sector / bench
+    rs_smooth = rs.ewm(span=smooth_window, adjust=False).mean()
+    rs_std = rs_smooth.rolling(z_window).std()
+    rs_ratio = 100 + (rs_smooth - rs_smooth.rolling(z_window).mean()) / rs_std.replace(0, np.nan)
+
+    momentum_raw = rs_ratio.diff(momentum_roc)
+    mom_std = momentum_raw.rolling(z_window).std()
+    rs_momentum = 100 + (momentum_raw - momentum_raw.rolling(z_window).mean()) / mom_std.replace(0, np.nan)
+
+    out = pd.DataFrame({"rs_ratio": rs_ratio, "rs_momentum": rs_momentum}).dropna()
+    return out.tail(tail_periods)
+
+
 def rrg_tail(sector_close: pd.Series, bench_close: pd.Series,
              tail_periods: int = config.RRG_HISTORY_WEEKS,
              smooth_window: int = config.RRG_SMOOTH_WINDOW,
@@ -238,18 +255,22 @@ def rrg_tail(sector_close: pd.Series, bench_close: pd.Series,
     aligned = pd.concat([sector_close, bench_close], axis=1, join="inner")
     aligned.columns = ["sector", "bench"]
     weekly = aligned.resample("W-FRI").last().dropna()
+    return _rrg_from_series(weekly["sector"], weekly["bench"], tail_periods, smooth_window, z_window, momentum_roc)
 
-    rs = 100 * weekly["sector"] / weekly["bench"]
-    rs_smooth = rs.ewm(span=smooth_window, adjust=False).mean()
-    rs_std = rs_smooth.rolling(z_window).std()
-    rs_ratio = 100 + (rs_smooth - rs_smooth.rolling(z_window).mean()) / rs_std.replace(0, np.nan)
 
-    momentum_raw = rs_ratio.diff(momentum_roc)
-    mom_std = momentum_raw.rolling(z_window).std()
-    rs_momentum = 100 + (momentum_raw - momentum_raw.rolling(z_window).mean()) / mom_std.replace(0, np.nan)
-
-    out = pd.DataFrame({"rs_ratio": rs_ratio, "rs_momentum": rs_momentum}).dropna()
-    return out.tail(tail_periods)
+def rrg_tail_daily(sector_close: pd.Series, bench_close: pd.Series,
+                    tail_periods: int = config.RRG_DAILY_HISTORY_DAYS,
+                    smooth_window: int = config.RRG_DAILY_SMOOTH_WINDOW,
+                    z_window: int = config.RRG_DAILY_Z_WINDOW,
+                    momentum_roc: int = config.RRG_DAILY_MOMENTUM_ROC) -> pd.DataFrame:
+    """Same construction as rrg_tail(), but on daily closes directly -- no
+    weekly resample -- for the dashboard's daily/weekly RRG toggle. Returns
+    a DataFrame indexed by trading date with columns [rs_ratio, rs_momentum],
+    the last `tail_periods` rows."""
+    aligned = pd.concat([sector_close, bench_close], axis=1, join="inner")
+    aligned.columns = ["sector", "bench"]
+    aligned = aligned.dropna()
+    return _rrg_from_series(aligned["sector"], aligned["bench"], tail_periods, smooth_window, z_window, momentum_roc)
 
 
 def classify_status(srs: float, delta3d: float, ema_stack: str, ema_slope: str,

@@ -79,13 +79,18 @@ zero-candidate day:
    just carry them over field-for-field (blank CSV cells for non-SPDR themes
    stay null, don't invent them).
 
-   Also include rrg_points: one entry per row of the sibling
-   sector-rotation/data/rrg_<date>.csv (written by the same pipeline.py run,
-   right after report_<date>.csv) with name, kind, etf, week_date, seq,
-   rs_ratio, rs_momentum — carry over field-for-field, don't recompute or
-   filter it (it's the full ~26-week history feeding the dashboard's
-   Relative Rotation Graph scrub slider, not just the latest week). This is
-   web-dashboard-only -- it doesn't appear in the PDF, so nothing to
+   Also include rrg_points: ONE combined array covering BOTH sibling files
+   pipeline.py writes -- sector-rotation/data/rrg_<date>.csv (weekly tail)
+   AND sector-rotation/data/rrg_daily_<date>.csv (daily tail, same run,
+   written right after it). For each row of rrg_<date>.csv, emit an entry
+   with name, kind, etf, week_date (from that file's WeekDate column), seq,
+   rs_ratio, rs_momentum, period:"W". For each row of rrg_daily_<date>.csv,
+   emit an entry the same way but with week_date set from that file's Date
+   column and period:"D". Carry values over field-for-field, don't recompute
+   or filter either file (weekly is the full ~26-week history, daily is the
+   full ~60-trading-day history -- both feed the dashboard's Relative
+   Rotation Graph, which has its own Weekly/Daily toggle and scrub slider).
+   This is web-dashboard-only -- it doesn't appear in the PDF, so nothing to
    translate here.
 
    Write EVERY free-text field in BOTH Russian (the primary field) AND

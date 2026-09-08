@@ -144,6 +144,22 @@ def run(max_per_sector: int | None, max_per_theme: int | None, refresh: bool,
     print(f"Saved RRG history ({len(groups)} series x up to {config.RRG_HISTORY_WEEKS} weeks) to {rrg_out_path}",
           file=sys.stderr)
 
+    print("Building RRG tail (daily RS-Ratio/RS-Momentum)...", file=sys.stderr)
+    rrg_daily_rows = []
+    for name, g in groups.items():
+        tail = metrics.rrg_tail_daily(etf_close[name], bench_close)
+        for seq, (date, r) in enumerate(tail.iterrows()):
+            rrg_daily_rows.append({
+                "Name": name, "Kind": g["kind"], "ETF": g["etf"],
+                "Date": date.date().isoformat(), "Seq": seq,
+                "RSRatio": round(r["rs_ratio"], 3), "RSMomentum": round(r["rs_momentum"], 3),
+            })
+    rrg_daily_report = pd.DataFrame(rrg_daily_rows)
+    rrg_daily_out_path = str(config.DATA_DIR / f"rrg_daily_{dt.date.today().isoformat()}.csv")
+    rrg_daily_report.to_csv(rrg_daily_out_path, index=False)
+    print(f"Saved daily RRG history ({len(groups)} series x up to {config.RRG_DAILY_HISTORY_DAYS} days) to {rrg_daily_out_path}",
+          file=sys.stderr)
+
     return report
 
 

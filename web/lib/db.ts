@@ -102,6 +102,8 @@ export interface RRGPoint {
   seq: number;
   rs_ratio: number | null;
   rs_momentum: number | null;
+  /** 'W' (weekly) or 'D' (daily) -- which RRG tail this point belongs to. */
+  period: string;
 }
 
 export interface VerdictRow {
@@ -209,7 +211,7 @@ export async function getLatestRun(): Promise<RunData | null> {
       [run.id]
     ),
     pool.query(
-      `SELECT name, kind, etf, tv_symbol, week_date, seq, rs_ratio, rs_momentum
+      `SELECT name, kind, etf, tv_symbol, week_date, seq, rs_ratio, rs_momentum, period
        FROM rrg_points WHERE run_id = $1 ORDER BY name, seq`,
       [run.id]
     ),

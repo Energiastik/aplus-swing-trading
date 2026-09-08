@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { RRGPoint } from "@/lib/db";
 import { useLanguage } from "@/lib/i18n";
 
@@ -26,20 +26,26 @@ const PALETTE = [
 const W = 720;
 const H = 520;
 const M = 44;
-const WINDOW_LEN = 8; // trailing points shown per series at any scrub position
+// Trailing points shown per series at any scrub position. Daily data is
+// noisier and needs more points to read as a tail; weekly stays compact.
+const WINDOW_LEN = { W: 8, D: 15 } as const;
 const TRANSITION = "cx 0.35s ease, cy 0.35s ease, x1 0.35s ease, y1 0.35s ease, x2 0.35s ease, y2 0.35s ease, opacity 0.25s ease";
+
+type Period = "W" | "D";
 
 interface SeriesInfo {
   name: string;
+  kind: string | null;
   etf: string;
   color: string;
-  points: RRGPoint[]; // this series' own points, sorted by week_date
+  points: RRGPoint[]; // this series' own points (matching the active period), sorted by date
 }
 
-// Names whose MOST RECENT point sits in the improving or leading quadrant
-// (rs_momentum >= 100, i.e. still accelerating) -- these are what a swing
-// trader actually wants to see by default. Lagging/weakening names are real
-// data, just visual noise until the user asks for them.
+// Names whose MOST RECENT point (within the given point set) sits in the
+// improving or leading quadrant (rs_momentum >= 100, i.e. still
+// accelerating) -- these are what a swing trader actually wants to see by
+// default. Lagging/weakening names are real data, just visual noise until
+// the user asks for them.
 function defaultVisibleNames(points: RRGPoint[]): Set<string> {
   const latest = new Map<string, RRGPoint>();
   for (const p of points) {
@@ -56,21 +62,37 @@ function defaultVisibleNames(points: RRGPoint[]): Set<string> {
 
 export default function RRGChart({ points }: { points: RRGPoint[] }) {
   const { t } = useLanguage();
-  const [showThemes, setShowThemes] = useState(false);
+  const [period, setPeriod] = useState<Period>("W");
   const [highlighted, setHighlighted] = useState<string | null>(null);
-  const defaultHidden = useMemo(() => {
-    const visible = defaultVisibleNames(points);
-    const h = new Set<string>();
-    for (const p of points) if (!visible.has(p.name)) h.add(p.name);
-    return h;
-  }, [points]);
-  const [hidden, setHidden] = useState<Set<string>>(defaultHidden);
   const [windowEnd, setWindowEnd] = useState<number | null>(null); // null = latest
 
+  const periodPoints = useMemo(
+    () => points.filter((p) => ((p.period as Period | undefined) ?? "W") === period),
+    [points, period]
+  );
+
+  const defaultHidden = useMemo(() => {
+    const visible = defaultVisibleNames(periodPoints);
+    const h = new Set<string>();
+    for (const p of periodPoints) if (!visible.has(p.name)) h.add(p.name);
+    return h;
+  }, [periodPoints]);
+
+  const [hidden, setHidden] = useState<Set<string>>(defaultHidden);
+
+  // Switching Daily/Weekly swaps the whole dataset (different quadrant
+  // placement, different names may qualify) -- re-apply the "improving/
+  // leading only" default for the newly selected period rather than keeping
+  // a hidden-set computed for the other one.
+  useEffect(() => {
+    setHidden(new Set(defaultHidden));
+    setWindowEnd(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
+
   const allSeries: SeriesInfo[] = useMemo(() => {
-    const filtered = points.filter((p) => showThemes || p.kind === "Sector");
     const byName = new Map<string, RRGPoint[]>();
-    for (const p of filtered) {
+    for (const p of periodPoints) {
       if (p.rs_ratio == null || p.rs_momentum == null) continue;
       if (!byName.has(p.name)) byName.set(p.name, []);
       byName.get(p.name)!.push(p);
@@ -78,11 +100,11 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
     const names = Array.from(byName.keys()).sort((a, b) => a.localeCompare(b));
     return names.map((name, i) => {
       const pts = byName.get(name)!.slice().sort((a, b) => (a.week_date < b.week_date ? -1 : 1));
-      return { name, etf: pts[pts.length - 1].etf, color: PALETTE[i % PALETTE.length], points: pts };
+      return { name, kind: pts[pts.length - 1].kind, etf: pts[pts.length - 1].etf, color: PALETTE[i % PALETTE.length], points: pts };
     });
-  }, [points, showThemes]);
+  }, [periodPoints]);
 
-  // Global time axis: every distinct week seen across the active series set,
+  // Global time axis: every distinct date seen across the active series set,
   // so the slider scrubs one shared calendar rather than per-series indices.
   const allDates = useMemo(() => {
     const s = new Set<string>();
@@ -96,6 +118,15 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
 
   const endIdx = windowEnd ?? allDates.length - 1;
   const asOfDate = allDates[endIdx];
+  const windowLen = WINDOW_LEN[period];
+
+  function kindLabel(kind: string | null): string {
+    return kind === "Theme" ? t("kind_theme") : t("kind_sector");
+  }
+
+  function seriesTitle(s: SeriesInfo): string {
+    return `${s.name} (${kindLabel(s.kind)}) — ${s.etf}`;
+  }
 
   // Axis range is fixed to the FULL dataset (not just what's currently
   // visible) so the frame doesn't jump around as you scrub or hide series --
@@ -131,9 +162,22 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
         <p className="meta-line" style={{ margin: 0 }}>
           {t("rrg_axes_note")}
         </p>
-        <button className="theme-card-expand" onClick={() => setShowThemes((v) => !v)} style={{ flexShrink: 0 }}>
-          {showThemes ? t("rrg_only_sectors") : t("rrg_add_themes")}
-        </button>
+        <div className="rrg-period-toggle">
+          <button
+            className={`rrg-period-btn ${period === "W" ? "rrg-period-btn-active" : ""}`}
+            aria-pressed={period === "W"}
+            onClick={() => setPeriod("W")}
+          >
+            {t("rrg_period_weekly")}
+          </button>
+          <button
+            className={`rrg-period-btn ${period === "D" ? "rrg-period-btn-active" : ""}`}
+            aria-pressed={period === "D"}
+            onClick={() => setPeriod("D")}
+          >
+            {t("rrg_period_daily")}
+          </button>
+        </div>
       </div>
       <p className="meta-line" style={{ margin: "0 0 0.6rem" }}>
         {t("rrg_default_filter_note")}
@@ -188,7 +232,7 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
             // This series' own points at or before the globally-selected
             // date, most recent last -- its trailing window.
             const upTo = s.points.filter((p) => p.week_date <= asOfDate);
-            const windowPts = upTo.slice(Math.max(0, upTo.length - WINDOW_LEN));
+            const windowPts = upTo.slice(Math.max(0, upTo.length - windowLen));
             if (windowPts.length === 0) return null;
 
             // slot 0 = current/most recent -- keying by slot (not by the
@@ -205,6 +249,7 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
                 onMouseLeave={() => setHighlighted(null)}
                 style={{ cursor: "pointer" }}
               >
+                <title>{seriesTitle(s)}</title>
                 {slots.slice(0, -1).map((p, i) => {
                   const next = slots[i + 1];
                   return (
@@ -258,7 +303,7 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
       </div>
 
       <div className="rrg-slider-row">
-        <span className="rrg-slider-label">{t("rrg_week_label")}</span>
+        <span className="rrg-slider-label">{period === "D" ? t("rrg_day_label") : t("rrg_week_label")}</span>
         <input
           type="range"
           className="rrg-slider"
@@ -285,6 +330,7 @@ export default function RRGChart({ points }: { points: RRGPoint[] }) {
               onClick={() => toggleHidden(s.name)}
               onMouseEnter={() => setHighlighted(s.name)}
               onMouseLeave={() => setHighlighted(null)}
+              title={seriesTitle(s)}
               style={{ borderColor: isHidden ? "var(--border-soft)" : s.color }}
             >
               <span className="rrg-chip-dot" style={{ background: isHidden ? "var(--text-muted)" : s.color }} />
