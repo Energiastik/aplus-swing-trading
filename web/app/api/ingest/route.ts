@@ -338,14 +338,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    for (const p of body.rrg_points ?? []) {
+    const rrgPoints = body.rrg_points ?? [];
+    if (rrgPoints.length > 0) {
+      // rrg_points can run into the thousands now that weekly+daily tails are
+      // combined (~2,100 rows/day) -- one INSERT per row timed out the whole
+      // request in production. A single UNNEST-based bulk insert does it in
+      // one round trip regardless of row count.
       await client.query(
         `INSERT INTO rrg_points (run_id, name, kind, etf, tv_symbol, week_date, seq, rs_ratio, rs_momentum, period)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+         SELECT * FROM UNNEST($1::int[], $2::text[], $3::text[], $4::text[], $5::text[], $6::date[], $7::int[], $8::real[], $9::real[], $10::text[])`,
         [
-          runId, p.name ?? null, p.kind ?? null, p.etf ?? null, p.tv_symbol ?? p.etf ?? null,
-          p.week_date ?? null, p.seq ?? null, p.rs_ratio ?? null, p.rs_momentum ?? null,
-          p.period === "D" ? "D" : "W",
+          rrgPoints.map(() => runId),
+          rrgPoints.map((p) => p.name ?? null),
+          rrgPoints.map((p) => p.kind ?? null),
+          rrgPoints.map((p) => p.etf ?? null),
+          rrgPoints.map((p) => p.tv_symbol ?? p.etf ?? null),
+          rrgPoints.map((p) => p.week_date ?? null),
+          rrgPoints.map((p) => p.seq ?? null),
+          rrgPoints.map((p) => p.rs_ratio ?? null),
+          rrgPoints.map((p) => p.rs_momentum ?? null),
+          rrgPoints.map((p) => (p.period === "D" ? "D" : "W")),
         ]
       );
     }
