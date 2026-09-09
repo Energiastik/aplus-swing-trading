@@ -39,9 +39,15 @@ that's what Section 1 (Market Regime) is for.
   — same "no setup, no forced output" discipline as everything else in this file.
 
 ## 1. Market Regime (gate #1 — checked before anything else)
-Weekly regime checklist (Day 3), scored 0–4:
+Weekly regime checklist, scored 0–4:
 1. SPY close > EMA 200 (daily)?
-2. QQQ made a new 4-week high within the last 5 sessions?
+2. Breadth: RSP (equal-weight S&P 500) keeping pace with SPY (cap-weight) over the
+   trailing 20 trading days (RSP/SPY ratio now ≥ ratio 20d ago × 0.99)? A market
+   carried by a handful of mega-caps while the average stock lags shows up here even
+   when SPY itself looks fine — narrow leadership is fragile leadership. (Replaced
+   "QQQ new 4-week high within 5 sessions" — that check was narrow/binary and
+   largely redundant with #4 below; this catches a real failure mode the old
+   4-check set missed entirely.)
 3. VIX < 20?
 4. SPY closed last week higher than the prior week?
 

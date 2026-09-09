@@ -5,7 +5,7 @@ import type { VisionGrade } from "../lib/visionGrade";
 // call returns a valid grade but no entry plan (entry_type "none", null
 // stop/target) -- a legitimate, non-error response the old code silently
 // turned into an unexplained "R/R n/a" PASS.
-async function noplanGrade(_ticker: string, _context: Record<string, any>): Promise<VisionGrade> {
+async function noplanGrade(_ticker: string, _chartImageDataUri: string | null, _context: Record<string, any>): Promise<VisionGrade> {
   return {
     grade: "C", stage: 1, trend: "range", pattern: "none", base_number: null,
     vcp: false, vdu: false, extended_pct_from_pivot: null, equal_highs_risk: false,

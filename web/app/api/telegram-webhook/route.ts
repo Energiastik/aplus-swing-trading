@@ -99,8 +99,16 @@ function formatVerdict(v: Verdict): string {
     if (v.conviction) lines.push(`Conviction: ${v.conviction}`);
   }
   lines.push(`\nRegime: ${v.regime_mode} (${v.regime_score}/4)`);
-  if (v.sector) lines.push(`Sector: ${v.sector}${v.sector_beats_spy ? " (beating SPY 4W)" : ""}`);
-  if (v.chart_grade) lines.push(`Chart grade: ${v.chart_grade} (numeric-only read, no chart image -- verify visually before acting)`);
+  if (v.sector) {
+    const rrg = v.sector_rrg_quadrant ? `, RRG: ${v.sector_rrg_quadrant}` : "";
+    lines.push(`Sector: ${v.sector}${v.sector_beats_spy ? " (beating SPY 4W)" : ""}${rrg}`);
+  }
+  if (v.theme) {
+    const rrg = v.theme_rrg_quadrant ? `, RRG: ${v.theme_rrg_quadrant}` : "";
+    const confidence = v.theme_match_confidence === "approximate" ? " (approximate match)" : "";
+    lines.push(`Theme: ${v.theme}${confidence}${rrg}`);
+  }
+  if (v.chart_grade) lines.push(`Chart grade: ${v.chart_grade} (real chart read by the model -- still worth a look yourself before acting)`);
   if (v.earnings_trading_days != null) lines.push(`Earnings: ~${v.earnings_trading_days.toFixed(0)} trading days out`);
   if (v.rs_pctile_is_estimate && v.rs_pctile_estimate != null) lines.push(`RS percentile: ~${v.rs_pctile_estimate} (estimate vs SPY, not a full-market rank)`);
 

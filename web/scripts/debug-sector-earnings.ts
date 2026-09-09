@@ -1,9 +1,11 @@
-import { fetchSector, fetchNextEarningsCalendarDays } from "../lib/marketData";
+import { fetchSectorAndIndustry, fetchNextEarningsCalendarDays } from "../lib/marketData";
+import { mapToTheme } from "../lib/themes";
 
 async function main() {
   for (const t of ["AAPL", "NVDA", "BRZE", "SAIL"]) {
-    const [sector, days] = await Promise.all([fetchSector(t), fetchNextEarningsCalendarDays(t)]);
-    console.log(t, "sector:", sector, "earnings in", days?.toFixed(2), "calendar days");
+    const [{ sector, industry }, days] = await Promise.all([fetchSectorAndIndustry(t), fetchNextEarningsCalendarDays(t)]);
+    const theme = mapToTheme(t, industry);
+    console.log(t, "sector:", sector, "industry:", industry, "theme:", theme, "earnings in", days?.toFixed(2), "calendar days");
   }
 }
 main();

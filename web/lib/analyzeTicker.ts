@@ -3,14 +3,18 @@
  * version used by the Telegram webhook (web/app/api/telegram-webhook/route.ts)
  * since the Python pipeline isn't part of this deployment (see
  * strategy/TELEGRAM_BOT.md). Same thresholds, same gate order, same
- * confluence/A+ logic -- only the chart-vision step differs (numbers-only,
- * see lib/visionGrade.ts) since there's no chart image rendered here. */
-import { fetchDailyBars, fetchNextEarningsCalendarDays, fetchSector } from "./marketData";
+ * confluence/A+ logic -- now includes a real rendered chart image sent to
+ * the grading call (lib/renderChart.ts + lib/visionGrade.ts), the same
+ * idea as agent/chart_vision.py, just OpenAI instead of Anthropic. */
+import { fetchDailyBars, fetchNextEarningsCalendarDays, fetchSectorAndIndustry } from "./marketData";
 import { readTechnicals, rsWeightedReturn, confluenceCount, stopAndEntry, type TechRead } from "./technicals";
 import { assessRegime } from "./marketRegime";
 import { scoreSectors } from "./sectorRotation";
 import { readOptionsWalls, type OptionsWalls } from "./optionsWalls";
-import { gradeFromNumbers, type VisionGrade } from "./visionGrade";
+import { gradeChart, type VisionGrade } from "./visionGrade";
+import { renderChartPng } from "./renderChart";
+import { mapToTheme } from "./themes";
+import { getLatestRrgReading, type Quadrant } from "./rrgQuadrant";
 
 const YF_SECTOR_MAP: Record<string, string> = {
   "Technology": "Technology",
@@ -39,7 +43,7 @@ export interface Verdict {
   ticker: string;
   verdict: VerdictType;
   reason: string;
-  conviction: "A+" | "standard" | null;
+  conviction: "A+" | "A" | "standard" | null;
   rr_band: "2:1-2.9:1" | "3:1+" | null;
   trigger: "breakout" | "pullback" | null;
   aplus_score: number;
@@ -48,6 +52,10 @@ export interface Verdict {
   regime_mode: string;
   sector: string | null;
   sector_beats_spy: boolean;
+  sector_rrg_quadrant: Quadrant | null;
+  theme: string | null;
+  theme_match_confidence: "exact" | "approximate" | null;
+  theme_rrg_quadrant: Quadrant | null;
   price: number | null;
   entry: number | null;
   stop: number | null;
@@ -68,13 +76,35 @@ function tradingDays(calendarDays: number): number {
   return (calendarDays * 5) / 7;
 }
 
-async function sectorAndBeatsSpy(ticker: string): Promise<{ sector: string | null; beatsSpy: boolean }> {
-  const [yfSector, sectors] = await Promise.all([fetchSector(ticker), scoreSectors()]);
+interface SectorThemeInfo {
+  sector: string | null;
+  beatsSpy: boolean;
+  sectorRrgQuadrant: Quadrant | null;
+  theme: string | null;
+  themeConfidence: "exact" | "approximate" | null;
+  themeRrgQuadrant: Quadrant | null;
+}
+
+async function sectorAndThemeInfo(ticker: string): Promise<SectorThemeInfo> {
+  const [{ sector: yfSector, industry }, sectors] = await Promise.all([
+    fetchSectorAndIndustry(ticker), scoreSectors(),
+  ]);
   const mapped = yfSector ? (YF_SECTOR_MAP[yfSector] ?? yfSector) : null;
-  if (!mapped || sectors.length === 0) return { sector: mapped, beatsSpy: false };
-  const row = sectors.find((r) => r.sector === mapped);
-  if (!row) return { sector: mapped, beatsSpy: false };
-  return { sector: mapped, beatsSpy: row["4W_vs_SPY"] > 0 };
+  const row = mapped ? sectors.find((r) => r.sector === mapped) : undefined;
+  const beatsSpy = row ? row["4W_vs_SPY"] > 0 : false;
+
+  const themeMatch = mapToTheme(ticker, industry);
+
+  const [sectorRrg, themeRrg] = await Promise.all([
+    mapped ? getLatestRrgReading(mapped) : Promise.resolve(null),
+    themeMatch ? getLatestRrgReading(themeMatch.theme) : Promise.resolve(null),
+  ]);
+
+  return {
+    sector: mapped, beatsSpy, sectorRrgQuadrant: sectorRrg?.quadrant ?? null,
+    theme: themeMatch?.theme ?? null, themeConfidence: themeMatch?.confidence ?? null,
+    themeRrgQuadrant: themeRrg?.quadrant ?? null,
+  };
 }
 
 async function rsPctileEstimate(t: TechRead): Promise<number | null> {
@@ -118,13 +148,14 @@ function detectTrigger(t: TechRead, vision: VisionGrade): "breakout" | "pullback
 export async function analyzeTicker(
   rawTicker: string,
   optionsToken: string | null = null,
-  gradeFn: typeof gradeFromNumbers = gradeFromNumbers // injectable for tests -- avoids needing a live OpenAI call
+  gradeFn: typeof gradeChart = gradeChart // injectable for tests -- avoids needing a live OpenAI call
 ): Promise<Verdict> {
   const ticker = rawTicker.toUpperCase().trim();
   const bars = await fetchDailyBars(ticker, "2y");
   const base: Omit<Verdict, "verdict" | "reason"> = {
     ticker, conviction: null, rr_band: null, trigger: null, aplus_score: 0, aplus_detail: [],
     regime_score: 0, regime_mode: "", sector: null, sector_beats_spy: false,
+    sector_rrg_quadrant: null, theme: null, theme_match_confidence: null, theme_rrg_quadrant: null,
     price: null, entry: null, stop: null, target: null, rr: null,
     confluence_count: 0, confluence_signals: [], chart_grade: null, vision_note: null,
     used_fallback_levels: false,
@@ -134,15 +165,25 @@ export async function analyzeTicker(
   if (bars.length === 0) return { ...base, verdict: "PASS", reason: "no price data" };
 
   const t = readTechnicals(bars);
-  const [regime, { sector, beatsSpy }, earningsCalDays, rsPctile] = await Promise.all([
+  const [regime, sectorTheme, earningsCalDays, rsPctile] = await Promise.all([
     assessRegime(),
-    sectorAndBeatsSpy(ticker),
+    sectorAndThemeInfo(ticker),
     fetchNextEarningsCalendarDays(ticker),
     rsPctileEstimate(t),
   ]);
   const earningsTradingDays = earningsCalDays !== null ? tradingDays(earningsCalDays) : null;
 
-  const vision = await gradeFn(ticker, {
+  // Render the real chart before grading -- a rendering failure degrades to
+  // a null image (visionGrade.ts falls back to a more-conservative
+  // numbers-only prompt) rather than blocking the whole analysis.
+  let chartImageDataUri: string | null = null;
+  try {
+    chartImageDataUri = await renderChartPng(ticker, bars, t);
+  } catch (e) {
+    console.error(`renderChartPng(${ticker}) failed: ${e instanceof Error ? e.message : e}`);
+  }
+
+  const vision = await gradeFn(ticker, chartImageDataUri, {
     price: t.price, ema9: t.ema9, ema21: t.ema21, ema50: t.ema50, ema200: t.ema200,
     rsi14: t.rsi14, atr_pct: t.atr_pct, pivot: t.pivot, dist_to_pivot_pct: t.dist_to_pivot_pct,
     vol_ratio: t.vol_ratio, vdu: t.vdu, fib_382: t.fib_382, fib_500: t.fib_500, fib_618: t.fib_618,
@@ -177,7 +218,10 @@ export async function analyzeTicker(
   const v: Verdict = {
     ...base, verdict: "WAIT", reason: "",
     regime_score: regime.score, regime_mode: regime.mode,
-    sector, sector_beats_spy: beatsSpy,
+    sector: sectorTheme.sector, sector_beats_spy: sectorTheme.beatsSpy,
+    sector_rrg_quadrant: sectorTheme.sectorRrgQuadrant,
+    theme: sectorTheme.theme, theme_match_confidence: sectorTheme.themeConfidence,
+    theme_rrg_quadrant: sectorTheme.themeRrgQuadrant,
     price: t.price, entry, stop, target, rr,
     confluence_count: confCount, confluence_signals: confSignals,
     chart_grade: chartGrade, vision_note: vision.note ?? null,
@@ -203,7 +247,7 @@ export async function analyzeTicker(
   }
 
   const { score: aplusScore, detail: aplusDetail } = aplusChecklist(
-    regime.score, beatsSpy, t, vision, rr, rsPctile, earningsTradingDays
+    regime.score, sectorTheme.beatsSpy, t, vision, rr, rsPctile, earningsTradingDays
   );
   v.aplus_score = aplusScore;
   v.aplus_detail = aplusDetail;
@@ -218,7 +262,18 @@ export async function analyzeTicker(
   if (trigger === null) return { ...v, verdict: "WAIT", reason: "structurally fine, no trigger today" };
 
   // ---- BUY ----
-  const conviction: "A+" | "standard" = aplusScore === 9 ? "A+" : "standard";
+  // Conviction tiers: "A+" is the full 9/9 checklist (unchanged, matches
+  // STRATEGY.md's canonical A+ checklist). Below that, a sector or theme
+  // sitting in the RRG Improving/Leading quadrant is a real, separate
+  // tailwind signal -- same idea as the daily pipeline treating sector-
+  // rotation stage (Building/Emerging/Leading/Fading) as its own dimension
+  // alongside the A+ score, not fused into the 9 questions themselves. This
+  // is the one place RRG data affects the verdict; everywhere else it's
+  // shown as context only.
+  const rotationTailwind = (q: Quadrant | null) => q === "Improving" || q === "Leading";
+  const hasRotationTailwind = rotationTailwind(sectorTheme.sectorRrgQuadrant) || rotationTailwind(sectorTheme.themeRrgQuadrant);
+  const conviction: "A+" | "A" | "standard" =
+    aplusScore === 9 ? "A+" : hasRotationTailwind ? "A" : "standard";
   const rrBand: "2:1-2.9:1" | "3:1+" = rr >= 3.0 ? "3:1+" : "2:1-2.9:1";
   return {
     ...v, verdict: "BUY", conviction, rr_band: rrBand,

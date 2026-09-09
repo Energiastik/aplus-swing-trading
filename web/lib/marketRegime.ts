@@ -12,14 +12,14 @@ export interface Regime {
 }
 
 export async function assessRegime(): Promise<Regime> {
-  const [spy, qqq, vix] = await Promise.all([
+  const [spy, rsp, vix] = await Promise.all([
     fetchDailyBars("SPY", "2y"),
-    fetchDailyBars("QQQ", "6mo"),
+    fetchDailyBars("RSP", "6mo"),
     fetchDailyBars("^VIX", "3mo"),
   ]);
 
   const checks: Record<string, boolean> = {};
-  if (spy.length === 0 || qqq.length === 0) {
+  if (spy.length === 0 || rsp.length === 0) {
     return { score: 0, checks: { error: false }, mode: "NO_TRADE", size_multiplier: 0, vix: null, vix_note: "" };
   }
 
@@ -28,12 +28,16 @@ export async function assessRegime(): Promise<Regime> {
   const c1 = spyCloses[spyCloses.length - 1] > spyEma200[spyEma200.length - 1];
   checks["SPY > EMA200"] = c1;
 
-  const q = qqq.map((b) => b.close);
-  const rollingHigh: number[] = q.map((_, i) => Math.max(...q.slice(Math.max(0, i - 19), i + 1)));
-  const last5 = q.slice(-5);
-  const last5High = rollingHigh.slice(-5);
-  const c2 = last5.some((v, i) => v >= last5High[i] * 0.999);
-  checks["QQQ 4-week high (last 5d)"] = c2;
+  // Breadth: RSP (equal-weight S&P 500) vs SPY (cap-weight) over 20 trading
+  // days. If RSP keeps pace, participation is broad and healthy; if it
+  // meaningfully lags, the market is being carried by a handful of
+  // mega-caps -- a fragility signal the old "QQQ new 4-week high" check
+  // (narrow, binary, redundant with the SPY-up-this-week check below)
+  // didn't capture. 1% tolerance band absorbs day-to-day noise.
+  const spyByDate = new Map(spy.map((b) => [b.date, b.close]));
+  const ratioSeries = rsp.filter((b) => spyByDate.has(b.date)).map((b) => b.close / (spyByDate.get(b.date) as number));
+  const c2 = ratioSeries.length > 20 && ratioSeries[ratioSeries.length - 1] >= ratioSeries[ratioSeries.length - 21] * 0.99;
+  checks["Breadth: RSP keeping pace with SPY (20d)"] = c2;
 
   const vixClose = vix.length > 0 ? vix[vix.length - 1].close : null;
   const c3 = vixClose !== null && vixClose < 20;

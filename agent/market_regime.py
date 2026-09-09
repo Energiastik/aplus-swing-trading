@@ -19,10 +19,10 @@ class Regime:
 def assess() -> Regime:
     r = Regime()
     spy = data.history("SPY", period="2y")
-    qqq = data.history("QQQ", period="6mo")
+    rsp = data.history("RSP", period="6mo")
     vix = data.history("^VIX", period="3mo")
 
-    if spy.empty or qqq.empty:
+    if spy.empty or rsp.empty:
         r.checks["error"] = "no index data"
         return r
 
@@ -32,11 +32,16 @@ def assess() -> Regime:
     c1 = bool(r.spy_close > spy_ema200)
     r.checks["SPY > EMA200"] = c1
 
-    # 2. QQQ new 4-week high within last 5 sessions
-    q = qqq["Close"]
-    rolling_high = q.rolling(20).max()
-    c2 = bool((q.iloc[-5:] >= rolling_high.iloc[-5:] * 0.999).any())
-    r.checks["QQQ 4-week high (last 5d)"] = c2
+    # 2. Breadth: RSP (equal-weight S&P 500) vs SPY (cap-weight) over 20
+    # trading days. If RSP is keeping pace, participation is broad and
+    # healthy; if RSP is meaningfully lagging SPY, the market is being
+    # carried by a handful of mega-caps -- a classic fragility signal the
+    # old "QQQ new 4-week high" check (narrow, binary, redundant with the
+    # SPY-up-this-week check below) didn't capture at all. 1% tolerance
+    # band absorbs day-to-day noise rather than flagging every wobble.
+    ratio = rsp["Close"] / spy["Close"]
+    c2 = bool(len(ratio) > 20 and ratio.iloc[-1] >= ratio.iloc[-21] * 0.99)
+    r.checks["Breadth: RSP keeping pace with SPY (20d)"] = c2
 
     # 3. VIX < 20
     r.vix = float(vix["Close"].iloc[-1]) if not vix.empty else None

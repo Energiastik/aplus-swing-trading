@@ -113,17 +113,18 @@ export async function fetchNextEarningsCalendarDays(ticker: string): Promise<num
 
 /** yfinance's ticker.info["sector"] equivalent, via the unauthenticated
  * search endpoint (quoteSummary's assetProfile module needs the crumb dance
- * too, but search returns sector directly without it). */
-export async function fetchSector(ticker: string): Promise<string | null> {
+ * too, but search returns sector AND industry directly without it). Industry
+ * is the finer-grained field used for theme/sub-sector matching (lib/themes.ts). */
+export async function fetchSectorAndIndustry(ticker: string): Promise<{ sector: string | null; industry: string | null }> {
   const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(ticker)}&quotesCount=5`;
   try {
     const res = await fetch(url, { headers: { "User-Agent": UA } });
-    if (!res.ok) return null;
+    if (!res.ok) return { sector: null, industry: null };
     const data = await res.json();
     const quotes: any[] = data?.quotes ?? [];
     const exact = quotes.find((q) => q.symbol === ticker.toUpperCase()) ?? quotes[0];
-    return exact?.sector ?? null;
+    return { sector: exact?.sector ?? null, industry: exact?.industry ?? null };
   } catch {
-    return null;
+    return { sector: null, industry: null };
   }
 }

@@ -2,7 +2,7 @@ import { analyzeTicker } from "../lib/analyzeTicker";
 import type { VisionGrade } from "../lib/visionGrade";
 
 // Same fixed stub shape used for the Python cross-check earlier this session.
-async function fakeGrade(_ticker: string, context: Record<string, any>): Promise<VisionGrade> {
+async function fakeGrade(_ticker: string, _chartImageDataUri: string | null, context: Record<string, any>): Promise<VisionGrade> {
   const price = context.price as number;
   return {
     grade: "B", stage: 2, trend: "uptrend", pattern: "flag", base_number: 2,

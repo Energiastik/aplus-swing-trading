@@ -1,11 +1,20 @@
 # Single-ticker verdict rules (BUY / WAIT / PASS)
 
-Implemented in `agent/analyze_ticker.py`, this is the deterministic decision
-tree behind the planned Telegram `/add <ticker>` watchlist command. It's a
-sibling to the daily scan's own hard gates in `agent/ranking.py`'s `gates()`
-and A+ checklist in `agent/technicals.py`'s `a_plus_score()`, but scoped to
-one arbitrary ticker on demand rather than a pre-filtered screener pool —
-see the two noted deviations below.
+Originally implemented in `agent/analyze_ticker.py` (a standalone CLI you can
+run yourself with a real API key); the deterministic decision tree below is
+now what actually ships in the live Telegram `/add <ticker>` bot, via
+`web/lib/analyzeTicker.ts` (see `strategy/TELEGRAM_BOT.md`). It's a sibling
+to the daily scan's own hard gates in `agent/ranking.py`'s `gates()` and A+
+checklist in `agent/technicals.py`'s `a_plus_score()`, but scoped to one
+arbitrary ticker on demand rather than a pre-filtered screener pool — see
+the deviations below.
+
+**Note:** the TS version has since gained two things not yet back-ported to
+`agent/analyze_ticker.py`: a formulaic stop/target fallback when the grading
+call gives no plan (`stopAndEntry()` in `web/lib/technicals.ts`), and the
+"A" conviction tier / RRG bonus signal described below. Treat
+`web/lib/analyzeTicker.ts` as the canonical current behavior; the Python
+file is a slightly older reference.
 
 Every threshold here traces to an existing field already computed by
 `agent/technicals.py`, `agent/market_regime.py`, or `agent/chart_vision.py` —
@@ -39,8 +48,17 @@ Any of these caps it at WAIT:
 ## BUY (all of the above clear, AND a trigger exists)
 
 Implied by clearing every WAIT cap above (in particular `aplus_score ≥ 7`),
-plus a detected trigger. Conviction label: `aplus_score == 9` → **BUY (A+)**,
-else **BUY (standard)**. R/R band noted separately: `2.0–2.9` vs `3.0+`.
+plus a detected trigger. R/R band noted separately: `2.0–2.9` vs `3.0+`.
+
+Conviction label (three tiers, TS version only — see the RRG-quadrant note
+in `strategy/TELEGRAM_BOT.md` for the full rationale):
+- **A+**: `aplus_score == 9` (unchanged, matches STRATEGY.md's canonical
+  9-question checklist exactly).
+- **A**: `aplus_score` 7–8 AND the ticker's sector or theme is in the RRG
+  Improving/Leading quadrant (`web/lib/rrgQuadrant.ts`, read from the same
+  `rrg_points` table the daily routine already writes) — a real rotation
+  tailwind, never a hard gate, doesn't touch the 9-question checklist itself.
+- **standard**: `aplus_score` 7–8, no rotation tailwind.
 
 ### Trigger definition
 
