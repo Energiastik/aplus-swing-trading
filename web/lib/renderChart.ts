@@ -14,7 +14,7 @@ const W = 1000;
 const H_PRICE = 520;
 const H_VOL = 140;
 const H = H_PRICE + H_VOL;
-const MARGIN = { top: 20, right: 70, bottom: 10, left: 10 };
+const MARGIN = { top: 42, right: 70, bottom: 10, left: 10 };
 const MONTHS = 9;
 
 function anchoredVwapSeries(bars: Bar[], anchorDate: string): number[] {
@@ -66,7 +66,23 @@ export async function renderChartPng(ticker: string, bars: Bar[], t: TechRead): 
   const parts: string[] = [];
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`);
   parts.push(`<rect width="${W}" height="${H}" fill="#0b0f1a"/>`);
-  parts.push(`<text x="${MARGIN.left}" y="14" font-family="monospace" font-size="12" fill="#cbd5e1">${esc(ticker)} — Daily, EMA 9/21/50/200, S/R, Fib, VWAP, POC/VA</text>`);
+  parts.push(`<text x="${MARGIN.left}" y="14" font-family="monospace" font-size="12" fill="#cbd5e1">${esc(ticker)} — Daily, S/R, Fib, VWAP, POC/VA</text>`);
+
+  // On-image legend -- relying on the model to remember a text-described
+  // color mapping (blue/orange/purple/red/gold) was producing real misreads
+  // (e.g. confusing the gold VWAP line for an EMA and misjudging price vs.
+  // EMA200 on a chart where the numbers were actually correct). A swatch +
+  // label directly on the chart removes that ambiguity.
+  const legend: [string, string][] = [
+    ["EMA9", "#4fc3f7"], ["EMA21", "#ffb74d"], ["EMA50", "#ba68c8"], ["EMA200", "#e57373"], ["VWAP", "#d4af37"],
+  ];
+  let lx = MARGIN.left;
+  const ly = 30;
+  for (const [label, color] of legend) {
+    parts.push(`<line x1="${lx}" y1="${ly - 4}" x2="${lx + 18}" y2="${ly - 4}" stroke="${color}" stroke-width="2.5"/>`);
+    parts.push(`<text x="${lx + 22}" y="${ly}" font-family="monospace" font-size="11" fill="${color}">${label}</text>`);
+    lx += 22 + label.length * 6.5 + 16;
+  }
 
   // Y-axis gridlines + price labels
   for (let i = 0; i <= 5; i++) {
