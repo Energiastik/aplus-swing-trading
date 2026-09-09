@@ -117,7 +117,7 @@ function detectTrigger(t: TechRead, vision: VisionGrade): "breakout" | "pullback
 export async function analyzeTicker(
   rawTicker: string,
   optionsToken: string | null = null,
-  gradeFn: typeof gradeFromNumbers = gradeFromNumbers // injectable for tests -- no ANTHROPIC_API_KEY in local dev
+  gradeFn: typeof gradeFromNumbers = gradeFromNumbers // injectable for tests -- avoids needing a live OpenAI call
 ): Promise<Verdict> {
   const ticker = rawTicker.toUpperCase().trim();
   const bars = await fetchDailyBars(ticker, "2y");

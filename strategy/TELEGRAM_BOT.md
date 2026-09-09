@@ -20,7 +20,7 @@ TypeScript, living entirely in `web/lib/`:
 | `agent/market_regime.py` | `web/lib/marketRegime.ts` -- cross-checked, identical score/checks |
 | `agent/sector_rotation.py` | `web/lib/sectorRotation.ts` -- cross-checked, identical scores |
 | `agent/options_walls.py` | `web/lib/optionsWalls.ts` -- MarketData.app only (no yfinance fallback tier available here; reports `unavailable` rather than fabricate a level, same discipline as the Python version) |
-| `agent/chart_vision.py` | `web/lib/visionGrade.ts` -- **the one real quality gap**, see below |
+| `agent/chart_vision.py` (Claude vision) | `web/lib/visionGrade.ts` (OpenAI, `chat.completions.create` + `response_format: json_object` -- text-only, not vision; **the one real quality gap**, see below) |
 | `agent/analyze_ticker.py` | `web/lib/analyzeTicker.ts` -- cross-checked against 7 real tickers (AAPL/NVDA/KO/BRZE/SAIL/INTC/PYPL), same verdicts, same A+ scores, same regime/sector reads |
 
 ## The one real limitation: no chart image
@@ -30,7 +30,7 @@ Claude's vision API. Rendering a chart image from a Vercel Node function
 isn't practical without adding real dependency/runtime risk (canvas
 libraries have a history of native-binary pain on serverless), so this path
 sends the *same numeric context* (EMA stack, RSI, ATR%, pivot, VDU, Fib
-levels, VWAP, volume profile, S/R zones, recent OHLCV bars) to Claude as
+levels, VWAP, volume profile, S/R zones, recent OHLCV bars) to an LLM as
 **text only**, with a prompt (`web/lib/visionGrade.ts`, mirrored for
 reference at `strategy/vision_prompt_telegram_bot.md` -- keep both in sync
 manually if the grading criteria change) that explicitly tells the model
@@ -39,6 +39,11 @@ image-based grade. This means `chart_grade`/`base_number`/pattern detection
 here are a weaker signal than the daily PDF's chart-vision grade. Every
 Telegram reply says as much next to the chart grade.
 
+This path uses OpenAI (`OPENAI_API_KEY`, `chat.completions.create` with
+`response_format: json_object`), not Anthropic -- a deliberate choice for
+this one call, unrelated to the daily pipeline's own Claude-based chart
+vision, which is untouched.
+
 ## Required environment variables (Vercel dashboard, not settable by the agent)
 
 | Var | Value | Notes |
@@ -46,7 +51,8 @@ Telegram reply says as much next to the chart grade.
 | `TELEGRAM_BOT_TOKEN` | the existing bot token (already used by the daily routine) | needed here too since this runs from Vercel, not the routine sandbox |
 | `TELEGRAM_CHAT_ID` | the existing owner chat id | only this chat is allowed to trigger `/add` -- everyone else is silently ignored |
 | `TELEGRAM_WEBHOOK_SECRET` | a random secret (generated this session, given to the user out-of-band) | verified against Telegram's `X-Telegram-Bot-Api-Secret-Token` header on every webhook call -- without this set, the endpoint 401s everything |
-| `ANTHROPIC_API_KEY` | a real Anthropic API key | new requirement -- the Node app never needed this before; the daily routine's chart-vision step runs inside the Python sandbox with its own key, this is a separate call from Vercel |
+| `OPENAI_API_KEY` | a real OpenAI API key | new requirement -- the Node app never needed this before. Never commit this value anywhere; this repo is public. If a key was ever pasted into a chat or any non-secret channel, rotate it at platform.openai.com/api-keys before relying on it |
+| `OPENAI_VISION_MODEL` | optional, defaults to `gpt-4o` | override if you want a different model for the grading call |
 | `MARKETDATA_API_TOKEN` | optional, same token used by the daily routine | omit and options-wall confluence just reports `unavailable`, never a hard gate either way |
 
 ## Registering the webhook

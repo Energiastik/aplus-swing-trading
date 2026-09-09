@@ -1,11 +1,15 @@
-/** Text-only Claude grading for the Telegram-bot path -- the Node/Vercel
+/** Text-only OpenAI grading for the Telegram-bot path -- the Node/Vercel
  * deployment can't reach strategy/vision_prompt_telegram_bot.md at runtime
  * (only web/ is deployed), so its content is embedded here. Keep the two in
  * sync manually if the grading criteria change -- the .md file is the
- * human-readable canonical copy, documented for reference. */
-import Anthropic from "@anthropic-ai/sdk";
+ * human-readable canonical copy, documented for reference.
+ *
+ * Uses OpenAI (not Anthropic) by request -- OPENAI_API_KEY env var, never
+ * hardcoded. json_object response_format requires the word "JSON" somewhere
+ * in the prompt, which the closing instruction below already satisfies. */
+import OpenAI from "openai";
 
-const PROMPT = `You are the grading module behind the Telegram /add <ticker> on-demand swing
+const SYSTEM_PROMPT = `You are the grading module behind the Telegram /add <ticker> on-demand swing
 check, built on the same "VIP ӘДІС" methodology as the daily scan (long-only,
 EMA 9/21/50/200 system, O'Neil bases, Minervini VCP/VDU, Smart Money liquidity
 concepts).
@@ -45,7 +49,7 @@ pullback), or "none". Propose entry, stop (below structure / -2% below a
 reclaimed level, never on the EMA itself, wider than ~1.5x ATR), and a
 realistic first target.
 
-Respond with ONLY a JSON object, no markdown fences, no prose:
+Respond with ONLY a JSON object matching this exact shape, no markdown fences, no prose:
 {
   "grade": "A" | "B" | "C" | "F",
   "stage": 1 | 2 | 3 | 4,
@@ -90,23 +94,17 @@ export interface VisionGrade {
 }
 
 export async function gradeFromNumbers(ticker: string, context: Record<string, unknown>): Promise<VisionGrade> {
-  const client = new Anthropic(); // ANTHROPIC_API_KEY from env
-  const msg = await client.messages.create({
-    model: process.env.VISION_MODEL || "claude-sonnet-4-6",
-    max_tokens: 700,
-    system: PROMPT,
-    messages: [{
-      role: "user",
-      content: `Ticker: ${ticker}\nNumeric context: ${JSON.stringify(context)}\nGrade this. JSON only.`,
-    }],
+  const client = new OpenAI(); // OPENAI_API_KEY from env
+  const resp = await client.chat.completions.create({
+    model: process.env.OPENAI_VISION_MODEL || "gpt-4o",
+    temperature: 0.3,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: `Ticker: ${ticker}\nNumeric context: ${JSON.stringify(context)}\nGrade this. Respond with the JSON object described in the system prompt.` },
+    ],
   });
-  const text = msg.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
+  const text = (resp.choices[0]?.message?.content ?? "").trim();
   try {
     return JSON.parse(text);
   } catch {
