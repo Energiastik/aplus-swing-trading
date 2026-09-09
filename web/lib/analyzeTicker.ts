@@ -6,7 +6,7 @@
  * confluence/A+ logic -- only the chart-vision step differs (numbers-only,
  * see lib/visionGrade.ts) since there's no chart image rendered here. */
 import { fetchDailyBars, fetchNextEarningsCalendarDays, fetchSector } from "./marketData";
-import { readTechnicals, rsWeightedReturn, confluenceCount, type TechRead } from "./technicals";
+import { readTechnicals, rsWeightedReturn, confluenceCount, stopAndEntry, type TechRead } from "./technicals";
 import { assessRegime } from "./marketRegime";
 import { scoreSectors } from "./sectorRotation";
 import { readOptionsWalls, type OptionsWalls } from "./optionsWalls";
@@ -57,6 +57,7 @@ export interface Verdict {
   confluence_signals: string[];
   chart_grade: string | null;
   vision_note: string | null;
+  used_fallback_levels: boolean;
   rs_pctile_estimate: number | null;
   rs_pctile_is_estimate: true;
   earnings_trading_days: number | null;
@@ -126,6 +127,7 @@ export async function analyzeTicker(
     regime_score: 0, regime_mode: "", sector: null, sector_beats_spy: false,
     price: null, entry: null, stop: null, target: null, rr: null,
     confluence_count: 0, confluence_signals: [], chart_grade: null, vision_note: null,
+    used_fallback_levels: false,
     rs_pctile_estimate: null, rs_pctile_is_estimate: true, earnings_trading_days: null,
     options_wall_source: null,
   };
@@ -149,9 +151,24 @@ export async function analyzeTicker(
   });
   const chartGrade = vision.grade || "C";
 
-  const entry = vision.entry || t.price;
-  const stop = vision.stop ?? null;
-  const target = vision.target ?? null;
+  // The numbers-only grading call sometimes declines to give a plan
+  // (entry_type "none" or missing stop/target) where the real chart-vision
+  // pipeline would have judged real structural levels. Rather than silently
+  // discard the ticker as "R/R n/a", fall back to the same formulaic
+  // stop_and_entry() the daily pipeline itself falls back to when it can't
+  // do better -- always labeled as a fallback, never presented as the
+  // model's own judgment.
+  let entry = vision.entry ?? t.price;
+  let stop = vision.stop ?? null;
+  let target = vision.target ?? null;
+  let usedFallbackLevels = false;
+  if (stop === null || target === null) {
+    const fallback = stopAndEntry(t);
+    entry = vision.entry ?? fallback.entry;
+    stop = fallback.stop;
+    target = fallback.target;
+    usedFallbackLevels = true;
+  }
   const rr = stop && target && entry > stop ? Math.round(((target - entry) / (entry - stop)) * 100) / 100 : null;
 
   const walls: OptionsWalls = await readOptionsWalls(ticker, t.price, optionsToken);
@@ -164,13 +181,19 @@ export async function analyzeTicker(
     price: t.price, entry, stop, target, rr,
     confluence_count: confCount, confluence_signals: confSignals,
     chart_grade: chartGrade, vision_note: vision.note ?? null,
+    used_fallback_levels: usedFallbackLevels,
     rs_pctile_estimate: rsPctile, earnings_trading_days: earningsTradingDays,
     options_wall_source: walls.source,
   };
 
   // ---- PASS gates ----
   if (!t.above_200) return { ...v, verdict: "PASS", reason: "below EMA200 -- no long structure" };
-  if (rr === null || rr < MIN_RR) return { ...v, verdict: "PASS", reason: `R/R ${rr ?? "n/a"} < ${MIN_RR}` };
+  if (rr === null || rr < MIN_RR) {
+    const why = usedFallbackLevels
+      ? `structural stop/target (fallback -- grading gave no plan${vision.note ? `: "${vision.note}"` : ""})`
+      : "grading's own entry/stop/target";
+    return { ...v, verdict: "PASS", reason: `R/R ${rr ?? "n/a"} < ${MIN_RR} from ${why}` };
+  }
   if (chartGrade === "F") return { ...v, verdict: "PASS", reason: `chart grade F -- ${vision.note ?? ""}` };
   if (earningsTradingDays !== null && earningsTradingDays < MIN_EARNINGS_TRADING_DAYS) {
     return { ...v, verdict: "PASS", reason: `earnings in ~${earningsTradingDays.toFixed(0)} trading days` };

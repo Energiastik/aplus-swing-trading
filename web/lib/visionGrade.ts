@@ -104,10 +104,24 @@ export async function gradeFromNumbers(ticker: string, context: Record<string, u
       { role: "user", content: `Ticker: ${ticker}\nNumeric context: ${JSON.stringify(context)}\nGrade this. Respond with the JSON object described in the system prompt.` },
     ],
   });
-  const text = (resp.choices[0]?.message?.content ?? "").trim();
+  const choice = resp.choices[0];
+  const text = (choice?.message?.content ?? "").trim();
+
+  // Surface failures loudly (throw) instead of silently degrading to a fake
+  // C-grade/no-plan verdict -- a swallowed failure here previously showed up
+  // downstream as an unexplained "R/R n/a" PASS with no way to diagnose it
+  // from the Telegram reply. The webhook route's catch turns this into a
+  // visible "check failed" message instead of a misleading saved verdict.
+  if (!text) {
+    console.error(`gradeFromNumbers(${ticker}): empty response, finish_reason=${choice?.finish_reason}`);
+    throw new Error(`OpenAI grading returned no content (finish_reason=${choice?.finish_reason ?? "none"})`);
+  }
   try {
-    return JSON.parse(text);
-  } catch {
-    return { grade: "C", note: `unparseable grading reply: ${text.slice(0, 120)}` };
+    const parsed = JSON.parse(text);
+    if (!parsed.grade) throw new Error("missing 'grade' field");
+    return parsed;
+  } catch (e) {
+    console.error(`gradeFromNumbers(${ticker}): unparseable response: ${text.slice(0, 300)}`);
+    throw new Error(`OpenAI grading returned unparseable JSON: ${text.slice(0, 200)}`);
   }
 }

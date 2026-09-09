@@ -311,6 +311,24 @@ function mean(values: number[]): number {
   return values.length ? values.reduce((s, v) => s + v, 0) / values.length : 0;
 }
 
+/** Port of agent/technicals.py's stop_and_entry() -- the "blunt capped
+ * formula" DAILY_PROMPT.md explicitly avoids for the real daily pipeline in
+ * favor of vision-judged real structural levels. Used here only as a
+ * fallback when the (numbers-only) grading call doesn't return an explicit
+ * plan (entry_type "none" or missing stop/target) -- better than silently
+ * discarding the ticker as "R/R n/a" with no computed levels at all. Always
+ * flagged as a fallback in the caller's reason text, never presented as the
+ * model's own judgment. */
+export function stopAndEntry(t: TechRead): { entry: number; stop: number; target: number } {
+  const entry = t.price;
+  const struct = t.pullback_low ?? entry * 0.95;
+  let stop = Math.min(struct * 0.995, entry - 1.7 * t.atr14);
+  stop = Math.max(stop, entry * 0.90);
+  stop = Math.min(stop, entry * 0.97);
+  const target = t.pivot && t.pivot > entry ? t.pivot * 1.10 : entry * 1.15;
+  return { entry: round2(entry), stop: round2(stop), target: round2(target) };
+}
+
 export interface OptionsWallsLike {
   source: string;
   call_wall: number | null;

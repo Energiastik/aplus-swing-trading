@@ -89,11 +89,11 @@ function formatVerdict(v: Verdict): string {
   const lines = [`${emoji} *${v.ticker}* — *${v.verdict}*`, v.reason];
 
   if (v.price != null) lines.push(`\nPrice: $${v.price.toFixed(2)}`);
+  if (v.entry != null) lines.push(`Entry: $${v.entry.toFixed(2)}${v.used_fallback_levels ? " (formula fallback, not the model's own plan)" : ""}`);
+  if (v.stop != null) lines.push(`Stop: $${v.stop.toFixed(2)}`);
+  if (v.target != null) lines.push(`Target: $${v.target.toFixed(2)}`);
+  if (v.rr != null) lines.push(`R/R: ${v.rr.toFixed(2)}${v.rr_band ? ` (${v.rr_band})` : ""}`);
   if (v.verdict !== "PASS") {
-    if (v.entry != null) lines.push(`Entry: $${v.entry.toFixed(2)}`);
-    if (v.stop != null) lines.push(`Stop: $${v.stop.toFixed(2)}`);
-    if (v.target != null) lines.push(`Target: $${v.target.toFixed(2)}`);
-    if (v.rr != null) lines.push(`R/R: ${v.rr.toFixed(2)}${v.rr_band ? ` (${v.rr_band})` : ""}`);
     lines.push(`A+ score: ${v.aplus_score}/9`);
     if (v.confluence_signals.length) lines.push(`Confluence: ${v.confluence_signals.join(", ")}`);
     if (v.conviction) lines.push(`Conviction: ${v.conviction}`);
