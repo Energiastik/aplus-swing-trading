@@ -37,6 +37,11 @@ const DICT = {
     market_regime: "Режим рынка",
     regime_score: "Оценка режима",
     size_multiplier: "Множитель размера",
+    regime_check_spy_ema200: "SPY > EMA200",
+    regime_check_breadth: "Ширина рынка: RSP не отстаёт от SPY (20д)",
+    regime_check_vix: "VIX < 20",
+    regime_check_spy_week: "SPY вырос за неделю",
+    regime_check_qqq_high: "QQQ на 4-нед. максимуме (5д)",
 
     stage2_title: "Основные индексы",
     stage2_subtitle: "Куда идёт широкий рынок",
@@ -184,6 +189,11 @@ const DICT = {
     market_regime: "Market Regime",
     regime_score: "Regime score",
     size_multiplier: "Size multiplier",
+    regime_check_spy_ema200: "SPY > EMA200",
+    regime_check_breadth: "Breadth: RSP keeping pace with SPY (20d)",
+    regime_check_vix: "VIX < 20",
+    regime_check_spy_week: "SPY up on week",
+    regime_check_qqq_high: "QQQ 4-week high (last 5d)",
 
     stage2_title: "Main Indices",
     stage2_subtitle: "Where the broad market is heading",

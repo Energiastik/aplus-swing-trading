@@ -1,6 +1,6 @@
 "use client";
 
-import { useLanguage, pickText } from "@/lib/i18n";
+import { useLanguage, pickText, type DictKey } from "@/lib/i18n";
 import type { RunData } from "@/lib/db";
 import { RegimeModeBadge } from "@/components/Badges";
 import TradingViewWidget from "@/components/TradingViewWidget";
@@ -13,6 +13,19 @@ import LogoutButton from "@/components/LogoutButton";
 import LangToggle from "@/components/LangToggle";
 import { StageHeader, StageConnector } from "@/components/FunnelStage";
 import { RadarAccent, SonarAccent, OrbitAccent, ScanAccent, LockAccent } from "@/components/Accents";
+
+// Maps the exact English check-name strings agent/market_regime.py writes
+// into runs.regime_checks (JSONB, not itself translated) to a dictionary
+// key -- same lookup-map pattern as Badges.tsx's STAGE_KEY/REGIME_KEY.
+// regime_check_qqq_high covers older rows from before the breadth check
+// replaced it; unmatched labels still render as-is rather than disappear.
+const REGIME_CHECK_KEY: Record<string, DictKey> = {
+  "SPY > EMA200": "regime_check_spy_ema200",
+  "Breadth: RSP keeping pace with SPY (20d)": "regime_check_breadth",
+  "VIX < 20": "regime_check_vix",
+  "SPY up on week": "regime_check_spy_week",
+  "QQQ 4-week high (last 5d)": "regime_check_qqq_high",
+};
 
 function fmtDate(iso: string, lang: "ru" | "en") {
   const d = new Date(iso + "T00:00:00Z");
@@ -194,11 +207,14 @@ export default function Dashboard({
           </p>
         )}
         <div className="check-row">
-          {checks.map(([label, ok]) => (
-            <span key={label} className={ok ? "check-ok" : "check-fail"}>
-              {label}
-            </span>
-          ))}
+          {checks.map(([label, ok]) => {
+            const key = REGIME_CHECK_KEY[label];
+            return (
+              <span key={label} className={ok ? "check-ok" : "check-fail"}>
+                {key ? t(key) : label}
+              </span>
+            );
+          })}
         </div>
       </section>
 
