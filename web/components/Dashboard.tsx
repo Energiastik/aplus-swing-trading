@@ -49,6 +49,9 @@ export default function Dashboard({
 
   const sessionBar = (
     <div className="session-bar">
+      <a href="/watchlist" style={{ color: "var(--gold)", fontSize: "0.85rem", textDecoration: "none" }}>
+        {t("nav_watchlist")}
+      </a>
       <LangToggle />
       {sessionLabel}
       <LogoutButton />

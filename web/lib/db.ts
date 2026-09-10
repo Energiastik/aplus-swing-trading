@@ -9,7 +9,10 @@ declare global {
   var _pgPool: Pool | undefined;
 }
 
-function getPool(): Pool {
+// Exported so web/lib/watchlistActions.ts (the Telegram bot / website "add
+// to watchlist" shared logic) reuses this same pool instead of opening a
+// third independent one -- see that file for why there used to be two.
+export function getPool(): Pool {
   if (!global._pgPool) {
     global._pgPool = new Pool({
       connectionString: process.env.DATABASE_URL,
@@ -243,5 +246,48 @@ export async function getRunHistory(limit = 30): Promise<
   return res.rows.map((r) => ({
     ...r,
     date: r.date instanceof Date ? r.date.toISOString().slice(0, 10) : r.date,
+  }));
+}
+
+// Flat columns are a subset of lib/analyzeTicker.ts's Verdict -- `raw` JSONB
+// carries the rest (aplus_detail, confluence_signals, theme, vision_note,
+// etc.) for anything the table view doesn't need as its own column.
+export interface WatchlistRow {
+  id: number;
+  chat_id: string;
+  ticker: string;
+  verdict: string | null;
+  reason: string | null;
+  conviction: string | null;
+  rr_band: string | null;
+  trigger_type: string | null;
+  aplus_score: number | null;
+  regime_score: number | null;
+  regime_mode: string | null;
+  sector: string | null;
+  price: number | null;
+  entry: number | null;
+  stop: number | null;
+  target: number | null;
+  rr: number | null;
+  confluence_count: number | null;
+  chart_grade: string | null;
+  earnings_trading_days: number | null;
+  checked_at: string;
+  raw: Record<string, unknown> | null;
+}
+
+export async function getWatchlist(limit = 100): Promise<WatchlistRow[]> {
+  const pool = getPool();
+  const res = await pool.query(
+    `SELECT id, chat_id, ticker, verdict, reason, conviction, rr_band, trigger_type,
+            aplus_score, regime_score, regime_mode, sector, price, entry, stop, target, rr,
+            confluence_count, chart_grade, earnings_trading_days, checked_at, raw
+     FROM watchlist ORDER BY checked_at DESC LIMIT $1`,
+    [limit]
+  );
+  return res.rows.map((r) => ({
+    ...r,
+    checked_at: r.checked_at instanceof Date ? r.checked_at.toISOString() : r.checked_at,
   }));
 }

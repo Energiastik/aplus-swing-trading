@@ -1,9 +1,33 @@
-# Telegram `/add <ticker>` watchlist bot
+# Telegram `/add <ticker>` watchlist bot + the `/watchlist` dashboard tab
 
 Send `/add NVDA` to the bot -> it runs a real BUY/WAIT/PASS check (same rules
 as `agent/analyze_ticker.py`, see `strategy/VERDICT_RULES.md`), saves the
 result to the `watchlist` table, and replies with the verdict in the same
 chat. Synchronous, no cron: everything happens inside one webhook request.
+
+The same thing is also reachable from the dashboard itself: the `/watchlist`
+tab (linked from the main dashboard's session bar) lists every row in the
+`watchlist` table -- verdict badge, entry/stop/target/R/R, A+ score,
+conviction, sector/theme + RRG quadrant, an embedded TradingView chart per
+row (📈 button, `web/components/WatchlistChartModal.tsx`) -- and has its own
+"Add to watchlist" form that runs the exact same check. Both paths (Telegram
+`/add` and the website form) go through one shared function,
+`web/lib/watchlistActions.ts`'s `runAnalysisAndNotify()`: analyze -> save to
+`watchlist` -> send a Telegram alert to the owner's chat either way. So
+adding a ticker from the browser still pings your phone -- there's only one
+legitimate recipient (`TELEGRAM_CHAT_ID`) regardless of which surface
+triggered the check. `web/app/api/telegram-webhook/route.ts` and
+`web/app/api/watchlist/add/route.ts` are now both thin wrappers around that
+shared module (auth/parsing differs -- Telegram's secret-token header vs.
+the dashboard's own session cookie via `proxy.ts` -- but the actual
+"analyze, save, alert" logic is one code path, not two that could drift).
+
+One known simplification: `watchlist` rows don't store a TradingView
+`tv_symbol` (that's a Python-only resolution step, `agent/tv_symbol.py`,
+part of the offline daily pipeline, not this bot's path) -- the chart modal
+passes the bare ticker to `TradingViewWidget`, which TradingView resolves
+reasonably for most US-listed names but isn't exchange-pinned the way the
+daily Top 10 table's charts are.
 
 ## Why this is a separate implementation from `agent/analyze_ticker.py`
 

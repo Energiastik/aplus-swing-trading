@@ -41,6 +41,20 @@ export function StageBadge({ stage }: { stage: string | null }) {
   return <span className={`badge ${cls}`}>{key ? t(key) : stage}</span>;
 }
 
+const VERDICT_KEY: Record<string, DictKey> = {
+  BUY: "verdict_buy",
+  WAIT: "verdict_wait",
+  PASS: "verdict_pass",
+};
+
+export function VerdictBadge({ verdict }: { verdict: string | null }) {
+  const { t } = useLanguage();
+  const cls =
+    verdict === "BUY" ? "badge-good" : verdict === "WAIT" ? "badge-warning" : verdict === "PASS" ? "badge-critical" : "badge-neutral";
+  const key = verdict ? VERDICT_KEY[verdict] : undefined;
+  return <span className={`badge ${cls}`}>{key ? t(key) : verdict ?? "—"}</span>;
+}
+
 const REGIME_KEY: Record<string, DictKey> = {
   AGGRESSIVE: "regime_aggressive",
   CAUTIOUS: "regime_cautious",
