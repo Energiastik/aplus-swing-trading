@@ -277,13 +277,28 @@ export interface WatchlistRow {
   raw: Record<string, unknown> | null;
 }
 
+// The /watchlist tab is a "things to watch" list, not a full check history
+// -- every /add (Telegram or website) still inserts its own row regardless
+// of verdict (that history stays queryable directly if ever needed), but
+// this read (a) only surfaces WAIT verdicts (BUY/PASS are already resolved
+// one way or the other -- nothing to keep watching) and (b) collapses
+// repeated checks of the same ticker down to its latest one, via a
+// DISTINCT ON subquery re-sorted by checked_at so the most recently
+// re-checked ticker still sorts first.
 export async function getWatchlist(limit = 100): Promise<WatchlistRow[]> {
   const pool = getPool();
   const res = await pool.query(
-    `SELECT id, chat_id, ticker, verdict, reason, conviction, rr_band, trigger_type,
-            aplus_score, regime_score, regime_mode, sector, price, entry, stop, target, rr,
-            confluence_count, chart_grade, earnings_trading_days, checked_at, raw
-     FROM watchlist ORDER BY checked_at DESC LIMIT $1`,
+    `SELECT * FROM (
+       SELECT DISTINCT ON (ticker)
+              id, chat_id, ticker, verdict, reason, conviction, rr_band, trigger_type,
+              aplus_score, regime_score, regime_mode, sector, price, entry, stop, target, rr,
+              confluence_count, chart_grade, earnings_trading_days, checked_at, raw
+       FROM watchlist
+       WHERE verdict = 'WAIT'
+       ORDER BY ticker, checked_at DESC
+     ) latest
+     ORDER BY checked_at DESC
+     LIMIT $1`,
     [limit]
   );
   return res.rows.map((r) => ({

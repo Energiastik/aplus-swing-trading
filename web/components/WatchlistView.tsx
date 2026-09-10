@@ -33,6 +33,7 @@ export default function WatchlistView({
   const [ticker, setTicker] = useState("");
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [open, setOpen] = useState<WatchlistRow | null>(null);
 
   async function handleAdd(e: React.FormEvent) {
@@ -41,6 +42,7 @@ export default function WatchlistView({
     if (!clean) return;
     setChecking(true);
     setError(null);
+    setInfo(null);
     try {
       const res = await fetch("/api/watchlist/add", {
         method: "POST",
@@ -53,6 +55,15 @@ export default function WatchlistView({
         return;
       }
       const v = data.verdict;
+      setTicker("");
+
+      // This tab only lists WAIT (things worth still watching) -- a BUY/PASS
+      // result was already sent to Telegram, so surface it as a one-line
+      // confirmation here instead of adding a row the table would then hide.
+      if (v.verdict !== "WAIT") {
+        setInfo(`${v.ticker}: ${v.verdict} — ${v.reason} (sent to Telegram)`);
+        return;
+      }
       const newRow: WatchlistRow = {
         id: -Date.now(), // client-only placeholder id until the next real fetch
         chat_id: "", ticker: v.ticker, verdict: v.verdict, reason: v.reason,
@@ -63,8 +74,9 @@ export default function WatchlistView({
         earnings_trading_days: v.earnings_trading_days, checked_at: new Date().toISOString(),
         raw: v,
       };
-      setRows((prev) => [newRow, ...prev]);
-      setTicker("");
+      // Re-checking a ticker already on the list replaces it (latest wins),
+      // matching getWatchlist()'s DISTINCT ON dedupe server-side.
+      setRows((prev) => [newRow, ...prev.filter((r) => r.ticker !== newRow.ticker)]);
     } catch (e) {
       setError(t("watchlist_error_failed"));
     } finally {
@@ -119,6 +131,7 @@ export default function WatchlistView({
           </button>
         </form>
         {error && <p className="meta-line" style={{ color: "var(--status-critical)" }}>{error}</p>}
+        {info && <p className="meta-line" style={{ color: "var(--text-secondary)" }}>{info}</p>}
 
         {dbError ? (
           <p className="empty-state">{t("watchlist_no_db")}</p>
