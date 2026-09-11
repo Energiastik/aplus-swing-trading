@@ -55,7 +55,25 @@ ENTRY PLAN (long only)
 - Choose entry type: "aggressive" (above pullback candle high), "standard" (EMA
   9-21 bounce), "conservative" (EMA 50 pullback), or "none".
 - Propose entry price, stop (below structure / -2% below reclaimed level, NEVER
-  on the EMA itself, wider than ~1.5x ATR), and a realistic first target.
+  on the EMA itself, wider than ~1.5x ATR), and a realistic first target. These
+  exact numbers are used internally (R/R gating, confluence) but are NOT shown
+  to the end user directly -- what IS shown is the justification below, so make
+  that justification carry the actual reasoning, not just a label.
+
+JUSTIFICATION (shown to the user, written in BOTH Russian and English)
+Write 3-4 full sentences explaining the setup in plain language: what the
+current structure/trend looks like, why this is or isn't ready to buy right
+now, and -- this is the important part -- what SPECIFICALLY has to happen for
+it to become a real long entry (a concrete price level or pattern to watch
+for: "a pullback to the $X EMA21 on lighter volume", "a breakout above $Y on
+above-average volume", "earnings clear first", etc. -- reference the same
+levels behind your entry/stop/target above, just in prose, not as raw
+numbers-in-a-table). Write it as if telling the trader "here's why you should
+wait, and here's exactly what to watch for." Provide this SAME content twice,
+once in natural Russian ("justification_ru") and once in natural English
+("justification_en") -- write each directly in its own language, don't just
+machine-translate one into the other. Keep tickers, prices, and standard
+trading shorthand (EMA, RSI, R/R, VDU, SPY, grades A-F) as-is in both.
 
 Respond with ONLY a JSON object matching this exact shape, no markdown fences, no prose:
 {
@@ -73,7 +91,9 @@ Respond with ONLY a JSON object matching this exact shape, no markdown fences, n
   "entry": <float or null>,
   "stop": <float or null>,
   "target": <float or null>,
-  "note": "<one sentence, max 25 words, the single most important thing about this chart>"
+  "note": "<one sentence, max 25 words, the single most important thing about this chart>",
+  "justification_ru": "<3-4 sentences in Russian, see JUSTIFICATION above>",
+  "justification_en": "<3-4 sentences in English, see JUSTIFICATION above>"
 }
 
 Grading: A = Stage 2 leader, clean base/VCP with VDU, at or near pivot, clear plan,
@@ -99,6 +119,8 @@ export interface VisionGrade {
   stop?: number | null;
   target?: number | null;
   note?: string | null;
+  justification_ru?: string | null;
+  justification_en?: string | null;
 }
 
 /** `chartImageDataUri`: a `data:image/png;base64,...` URI from

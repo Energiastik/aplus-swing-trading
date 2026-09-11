@@ -13,6 +13,8 @@ async function fakeGrade(_ticker: string, _chartImageDataUri: string | null, con
     stop: Math.round(price * 0.93 * 100) / 100,
     target: Math.round(price * 1.12 * 100) / 100,
     note: "[STUBBED VISION -- not a real Claude grading]",
+    justification_ru: "[СТУБ] Структура в порядке, но пока нет чёткого триггера — ждём отката к EMA21 на затухающем объёме или пробоя пивота с подтверждением объёмом.",
+    justification_en: "[STUB] Structure is fine but there's no clean trigger yet -- waiting for a pullback to EMA21 on lighter volume, or a pivot breakout confirmed by volume.",
   };
 }
 

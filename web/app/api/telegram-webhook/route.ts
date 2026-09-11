@@ -29,18 +29,18 @@ export async function POST(req: NextRequest) {
   const addMatch = text.match(/^\/add\s+([A-Za-z.\-^]{1,10})\b/i);
   if (!addMatch) {
     if (text.startsWith("/")) {
-      await sendTelegramAlert(chatId, "Commands:\n/add <TICKER> -- run a swing-trade check and save it to your watchlist");
+      await sendTelegramAlert(chatId, "Команды:\n/add <ТИКЕР> — проверить сетап и сохранить в список наблюдения");
     }
     return NextResponse.json({ ok: true });
   }
 
   const ticker = addMatch[1].toUpperCase();
-  await sendTelegramAlert(chatId, `🔍 Checking ${ticker}...`);
+  await sendTelegramAlert(chatId, `🔍 Проверяю ${ticker}...`);
 
   try {
     await runAnalysisAndNotify(ticker, process.env.MARKETDATA_API_TOKEN || null, "telegram");
   } catch (e) {
-    await sendTelegramAlert(chatId, `❌ ${ticker}: check failed -- ${e instanceof Error ? e.message : "unknown error"}`);
+    await sendTelegramAlert(chatId, `❌ ${ticker}: проверка не удалась — ${e instanceof Error ? e.message : "неизвестная ошибка"}`);
   }
 
   return NextResponse.json({ ok: true });

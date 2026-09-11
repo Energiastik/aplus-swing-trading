@@ -3,24 +3,22 @@
 Send `/add NVDA` to the bot -> it runs a real BUY/WAIT/PASS check (same rules
 as `agent/analyze_ticker.py`, see `strategy/VERDICT_RULES.md`), saves the
 result to the `watchlist` table, and replies with the verdict in the same
-chat. Synchronous, no cron: everything happens inside one webhook request.
+chat. **`/add` in Telegram is the only way to add a new ticker, by design**
+-- there is deliberately no "add from the website" path (there used to be
+one; it was removed on request so the watchlist can't grow from anywhere
+but the chat itself).
 
-The same thing is also reachable from the dashboard itself: the `/watchlist`
-tab (linked from the main dashboard's session bar) lists every row in the
-`watchlist` table -- verdict badge, entry/stop/target/R/R, A+ score,
-conviction, sector/theme + RRG quadrant, an embedded TradingView chart per
-row (📈 button, `web/components/WatchlistChartModal.tsx`) -- and has its own
-"Add to watchlist" form that runs the exact same check. Both paths (Telegram
-`/add` and the website form) go through one shared function,
-`web/lib/watchlistActions.ts`'s `runAnalysisAndNotify()`: analyze -> save to
-`watchlist` -> send a Telegram alert to the owner's chat either way. So
-adding a ticker from the browser still pings your phone -- there's only one
-legitimate recipient (`TELEGRAM_CHAT_ID`) regardless of which surface
-triggered the check. `web/app/api/telegram-webhook/route.ts` and
-`web/app/api/watchlist/add/route.ts` are now both thin wrappers around that
-shared module (auth/parsing differs -- Telegram's secret-token header vs.
-the dashboard's own session cookie via `proxy.ts` -- but the actual
-"analyze, save, alert" logic is one code path, not two that could drift).
+The `/watchlist` dashboard tab (linked from the main dashboard's session
+bar) is read/view-only: it lists every currently-WAIT row -- verdict badge,
+the written justification (see below), A+ score, conviction, sector/theme +
+RRG quadrant, an embedded TradingView chart per row (📈 button, `web/
+components/WatchlistChartModal.tsx`). No form, no button that creates a new
+row.
+
+A second automated path exists: the daily price-trigger recheck (Vercel
+Cron, see "Daily price-trigger recheck" below) also calls the same
+analyze-and-notify function on *existing* WAIT tickers -- not a new
+addition, a fresh look at one already on the list.
 
 One known simplification: `watchlist` rows don't store a TradingView
 `tv_symbol` (that's a Python-only resolution step, `agent/tv_symbol.py`,
@@ -28,6 +26,53 @@ part of the offline daily pipeline, not this bot's path) -- the chart modal
 passes the bare ticker to `TradingViewWidget`, which TradingView resolves
 reasonably for most US-listed names but isn't exchange-pinned the way the
 daily Top 10 table's charts are.
+
+## No entry/stop/target/R-R shown -- a written justification instead
+
+`web/lib/visionGrade.ts`'s prompt still asks the model for entry/stop/target
+(needed internally: R/R gating, the A+ checklist's "R/R >= 2:1" item,
+confluence-proximity checks -- `agent/analyze_ticker.py`'s downstream logic
+is otherwise unchanged), but those numbers are no longer shown to the user
+anywhere (not in the Telegram message, not in the dashboard table or chart
+modal) -- by request, since precise price levels on a WAIT ticker go stale
+fast and read as more definitive than they are. In their place, the same
+grading call now also produces `justification_ru`/`justification_en`: 3-4
+sentences explaining the current structure, why it isn't a buy yet, and
+specifically what to watch for (a price level or pattern), written directly
+in each language (not machine-translated from one to the other) in one pass
+-- same "write both together" discipline as everything else bilingual in
+this project. The dashboard's language toggle picks between them via
+`pickText()`; Telegram (a fixed channel, no toggle) always shows the Russian
+version, matching the daily PDF's Russian-only convention.
+
+## Daily price-trigger recheck (Vercel Cron)
+
+Every day at **19:00 Astana time** (`web/vercel.json`: `"0 14 * * *"` --
+14:00 UTC; Astana is UTC+5 year-round, no DST, so this needs no seasonal
+adjustment), `web/app/api/watchlist/recheck/route.ts` runs automatically:
+
+1. Reads the current WAIT watchlist (`getWatchlist()` -- already
+   deduped to one row per ticker).
+2. For each, fetches today's live price (last close) -- a cheap check, not
+   a full re-analysis.
+3. If that price is within 2% of the ticker's stored entry/pivot level (the
+   same proximity convention `lib/technicals.ts` already uses for
+   confluence), it's "reached the watch zone": sends a heads-up alert, then
+   runs a full fresh re-analysis (new chart render, new vision call,
+   updated confluence/A+/verdict) through the exact same
+   `runAnalysisAndNotify()` `/add` uses -- so the follow-up message is a
+   complete, current verdict card, not just a price ping. This also
+   naturally "updates" the stored row (a new check, same dedupe-to-latest
+   behavior the dashboard tab already has).
+4. Tickers that haven't reached their zone stay silent -- no daily "nothing
+   changed" spam.
+
+Protected by `CRON_SECRET` (Vercel's documented convention: set that env
+var and Vercel automatically sends `Authorization: Bearer <CRON_SECRET>` on
+every cron invocation; the route checks it itself, and `/api/watchlist/
+recheck` is exempted from the session gate in `proxy.ts` the same way `/api/
+telegram-webhook` and `/api/ingest` are, since Vercel's cron caller has no
+browser session either).
 
 ## Why this is a separate implementation from `agent/analyze_ticker.py`
 
@@ -122,6 +167,7 @@ match than guess. Every Telegram reply flags an approximate match as such.
 | `OPENAI_VISION_MODEL` | optional, defaults to `gpt-4o` | must be a vision-capable model since a real chart image is sent now |
 | `MARKETDATA_API_TOKEN` | optional, same token used by the daily routine | omit and options-wall confluence just reports `unavailable`, never a hard gate either way |
 | `DATABASE_URL` | already set (shared with the dashboard) | also used now for the RRG quadrant read -- no new variable needed |
+| `CRON_SECRET` | `0252d55d6c33ff8f2ba300aa860ef2dc6dee5983ab930ab444e02a92e11dd0f5` (generated this session) | required for the daily recheck cron (`/api/watchlist/recheck`) -- Vercel automatically attaches this as a Bearer token to its own cron calls once the var is set; without it the route 401s (harmlessly -- it just means the cron never actually runs) |
 
 ## Registering the webhook
 
@@ -129,16 +175,21 @@ One-time `setWebhook` call against `https://aplus-swing-trading.vercel.app/api/t
 with the secret token above -- done once from this session; re-run only if
 the URL or secret ever changes. Verify anytime with `getWebhookInfo`.
 
+The recheck cron needs no equivalent registration step -- `web/vercel.json`'s
+`crons` array is picked up automatically on deploy, nothing to call by hand.
+
 ## Deployment risk to double-check
 
-`export const maxDuration = 60` is set on the route, but Vercel's **Hobby**
-plan hard-caps serverless functions at 10s regardless of that setting --
-this analysis (2 years of SPY/RSP/VIX + 11 sector ETFs + the ticker itself,
-chart rendering, an RRG DB read, plus an OpenAI vision round trip) will very
-likely exceed 10s -- more so now than the original text-only version. If
-`/add` replies with "Checking..." and then never follows up, this is almost
-certainly why -- it needs at least a Pro-tier Vercel plan (60s functions) to
-work reliably.
+`export const maxDuration = 60` is set on the Telegram/`/add` route (300 on
+the recheck route, since it may re-analyze several tickers in one run), but
+Vercel's **Hobby** plan hard-caps serverless functions at 10s regardless of
+that setting, and also only guarantees Hobby cron jobs run within the hour
+of their scheduled time, not at the exact minute -- this analysis (2 years
+of SPY/RSP/VIX + 11 sector ETFs + the ticker itself, chart rendering, an RRG
+DB read, plus an OpenAI vision round trip) will very likely exceed 10s
+regardless. If `/add` replies with "Проверяю..." and then never follows up,
+or the daily recheck silently never fires, this is almost certainly why --
+reliable timing needs at least a Pro-tier Vercel plan.
 
 ## Data table
 

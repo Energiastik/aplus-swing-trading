@@ -65,6 +65,13 @@ export interface Verdict {
   confluence_signals: string[];
   chart_grade: string | null;
   vision_note: string | null;
+  /** 3-4 sentence plain-language explanation (what the setup looks like,
+   * why it isn't a buy yet, and what to watch for) -- this is what's shown
+   * to the user instead of raw entry/stop/target numbers, which are still
+   * computed above (needed for R/R gating and confluence) but no longer
+   * surfaced directly in Telegram or the dashboard. */
+  justification_ru: string | null;
+  justification_en: string | null;
   used_fallback_levels: boolean;
   rs_pctile_estimate: number | null;
   rs_pctile_is_estimate: true;
@@ -158,6 +165,7 @@ export async function analyzeTicker(
     sector_rrg_quadrant: null, theme: null, theme_match_confidence: null, theme_rrg_quadrant: null,
     price: null, entry: null, stop: null, target: null, rr: null,
     confluence_count: 0, confluence_signals: [], chart_grade: null, vision_note: null,
+    justification_ru: null, justification_en: null,
     used_fallback_levels: false,
     rs_pctile_estimate: null, rs_pctile_is_estimate: true, earnings_trading_days: null,
     options_wall_source: null,
@@ -225,6 +233,7 @@ export async function analyzeTicker(
     price: t.price, entry, stop, target, rr,
     confluence_count: confCount, confluence_signals: confSignals,
     chart_grade: chartGrade, vision_note: vision.note ?? null,
+    justification_ru: vision.justification_ru ?? null, justification_en: vision.justification_en ?? null,
     used_fallback_levels: usedFallbackLevels,
     rs_pctile_estimate: rsPctile, earnings_trading_days: earningsTradingDays,
     options_wall_source: walls.source,

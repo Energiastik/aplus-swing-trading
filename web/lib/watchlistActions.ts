@@ -1,10 +1,9 @@
-/** Shared "analyze a ticker, save it, tell the owner" logic -- used by both
+/** Shared "analyze a ticker, save it, tell the owner" logic. Two callers:
  * the Telegram webhook (web/app/api/telegram-webhook/route.ts, `/add
- * TICKER` in chat) and the website's "Add to watchlist" action (web/app/api/
- * watchlist/add/route.ts, from the new /watchlist page). Single code path
- * so "whenever a new watchlist entry appears, the owner gets a Telegram
- * alert with the analysis" holds true regardless of which one triggered it,
- * instead of two routes quietly drifting out of sync with each other. */
+ * TICKER` in chat -- the ONLY way to add a new ticker, by design) and the
+ * daily price-trigger recheck (web/app/api/watchlist/recheck/route.ts, a
+ * Vercel Cron job). Single code path so "analyze, save, alert" behaves
+ * identically regardless of which one triggered it. */
 import { getPool } from "./db";
 import { analyzeTicker, type Verdict } from "./analyzeTicker";
 
@@ -73,46 +72,50 @@ export async function sendTelegramAlert(chatId: string, text: string): Promise<v
 
 const VERDICT_EMOJI: Record<string, string> = { BUY: "🟢", WAIT: "🟡", PASS: "🔴" };
 
-export function formatVerdictMessage(v: Verdict, source?: "web" | "telegram"): string {
+/** Telegram is a fixed, non-interactive channel (no language toggle like
+ * the dashboard has) -- defaults to Russian, matching every other
+ * fixed-channel output in this project (the daily PDF is Russian-only
+ * too). `source: "cron"` tags a message as coming from the daily
+ * price-trigger recheck rather than a manual /add. No entry/stop/target/R-R
+ * numbers shown by request -- justification_ru carries the actual reasoning
+ * instead (still computed internally for gating, just not surfaced here). */
+export function formatVerdictMessage(v: Verdict, source: "telegram" | "cron" = "telegram"): string {
   const emoji = VERDICT_EMOJI[v.verdict] ?? "";
-  const originTag = source === "web" ? " (added from the dashboard)" : "";
-  const lines = [`${emoji} *${v.ticker}* — *${v.verdict}*${originTag}`, v.reason];
+  const originTag = source === "cron" ? " (авто-проверка цены)" : "";
+  const lines = [`${emoji} *${v.ticker}* — *${v.verdict}*${originTag}`];
 
-  if (v.price != null) lines.push(`\nPrice: $${v.price.toFixed(2)}`);
-  if (v.entry != null) lines.push(`Entry: $${v.entry.toFixed(2)}${v.used_fallback_levels ? " (formula fallback, not the model's own plan)" : ""}`);
-  if (v.stop != null) lines.push(`Stop: $${v.stop.toFixed(2)}`);
-  if (v.target != null) lines.push(`Target: $${v.target.toFixed(2)}`);
-  if (v.rr != null) lines.push(`R/R: ${v.rr.toFixed(2)}${v.rr_band ? ` (${v.rr_band})` : ""}`);
+  const justification = v.justification_ru || v.reason;
+  if (justification) lines.push(`\n${justification}`);
+
   if (v.verdict !== "PASS") {
-    lines.push(`A+ score: ${v.aplus_score}/9`);
-    if (v.confluence_signals.length) lines.push(`Confluence: ${v.confluence_signals.join(", ")}`);
-    if (v.conviction) lines.push(`Conviction: ${v.conviction}`);
+    lines.push(`\nA+ score: ${v.aplus_score}/9`);
+    if (v.conviction) lines.push(`Убедительность: ${v.conviction}`);
   }
-  lines.push(`\nRegime: ${v.regime_mode} (${v.regime_score}/4)`);
+  lines.push(`\nРежим: ${v.regime_mode} (${v.regime_score}/4)`);
   if (v.sector) {
     const rrg = v.sector_rrg_quadrant ? `, RRG: ${v.sector_rrg_quadrant}` : "";
-    lines.push(`Sector: ${v.sector}${v.sector_beats_spy ? " (beating SPY 4W)" : ""}${rrg}`);
+    lines.push(`Сектор: ${v.sector}${v.sector_beats_spy ? " (обгоняет SPY за 4нед)" : ""}${rrg}`);
   }
   if (v.theme) {
     const rrg = v.theme_rrg_quadrant ? `, RRG: ${v.theme_rrg_quadrant}` : "";
-    const confidence = v.theme_match_confidence === "approximate" ? " (approximate match)" : "";
-    lines.push(`Theme: ${v.theme}${confidence}${rrg}`);
+    const confidence = v.theme_match_confidence === "approximate" ? " (приблизительное совпадение)" : "";
+    lines.push(`Тема: ${v.theme}${confidence}${rrg}`);
   }
-  if (v.chart_grade) lines.push(`Chart grade: ${v.chart_grade} (real chart read by the model -- still worth a look yourself before acting)`);
-  if (v.earnings_trading_days != null) lines.push(`Earnings: ~${v.earnings_trading_days.toFixed(0)} trading days out`);
-  if (v.rs_pctile_is_estimate && v.rs_pctile_estimate != null) lines.push(`RS percentile: ~${v.rs_pctile_estimate} (estimate vs SPY, not a full-market rank)`);
+  if (v.chart_grade) lines.push(`Оценка графика: ${v.chart_grade} (реальный график, прочитанный моделью — всё равно стоит взглянуть самому)`);
+  if (v.earnings_trading_days != null) lines.push(`Отчётность: через ~${v.earnings_trading_days.toFixed(0)} торговых дней`);
 
   return lines.join("\n");
 }
 
 /** The one shared entry point: analyze, persist, alert. `chatId` is always
- * the project owner's single Telegram chat (TELEGRAM_CHAT_ID) regardless of
- * whether this was triggered by `/add` in Telegram or the website's "Add to
- * watchlist" button -- there's only one legitimate recipient either way. */
+ * the project owner's single Telegram chat (TELEGRAM_CHAT_ID) -- the only
+ * way to add a ticker is `/add` in Telegram itself; `source: "cron"` is used
+ * by the daily price-trigger recheck re-running this same function on an
+ * existing WAIT ticker, not a new addition. */
 export async function runAnalysisAndNotify(
   ticker: string,
   optionsToken: string | null,
-  source: "web" | "telegram"
+  source: "telegram" | "cron" = "telegram"
 ): Promise<Verdict> {
   const chatId = process.env.TELEGRAM_CHAT_ID;
   const verdict = await analyzeTicker(ticker, optionsToken);

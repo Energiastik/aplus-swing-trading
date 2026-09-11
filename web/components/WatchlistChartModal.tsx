@@ -4,14 +4,10 @@ import { useEffect } from "react";
 import TradingViewWidget from "./TradingViewWidget";
 import { VerdictBadge } from "./Badges";
 import type { WatchlistRow } from "@/lib/db";
-import { useLanguage } from "@/lib/i18n";
-
-function fmtUsd(v: number | null): string {
-  return v == null ? "—" : `$${v.toFixed(2)}`;
-}
+import { useLanguage, pickText } from "@/lib/i18n";
 
 export default function WatchlistChartModal({ row, onClose }: { row: WatchlistRow; onClose: () => void }) {
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -22,9 +18,8 @@ export default function WatchlistChartModal({ row, onClose }: { row: WatchlistRo
   }, [onClose]);
 
   const raw = row.raw as Record<string, any> | null;
+  const justification = pickText(lang, raw?.justification_ru ?? row.reason, raw?.justification_en);
   const confluenceSignals: string[] = raw?.confluence_signals ?? [];
-  const visionNote: string | null = raw?.vision_note ?? null;
-  const usedFallback: boolean = raw?.used_fallback_levels ?? false;
   const theme: string | null = raw?.theme ?? null;
   const themeConfidence: string | null = raw?.theme_match_confidence ?? null;
   const themeRrg: string | null = raw?.theme_rrg_quadrant ?? null;
@@ -66,28 +61,9 @@ export default function WatchlistChartModal({ row, onClose }: { row: WatchlistRo
           </button>
         </div>
 
-        {row.reason && <p className="meta-line" style={{ margin: "0 0 0.75rem" }}>{row.reason}</p>}
+        {justification && <p className="verdict-reasoning" style={{ margin: "0 0 0.75rem" }}>{justification}</p>}
 
         <div className="stat-grid" style={{ marginTop: 0 }}>
-          <div className="stat-tile">
-            <div className="stat-label">{t("entry")}</div>
-            <div className="stat-value">
-              {fmtUsd(row.entry)}
-              {usedFallback && <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", display: "block" }}>({t("watchlist_fallback_levels")})</span>}
-            </div>
-          </div>
-          <div className="stat-tile">
-            <div className="stat-label">{t("stop")}</div>
-            <div className="stat-value">{fmtUsd(row.stop)}</div>
-          </div>
-          <div className="stat-tile">
-            <div className="stat-label">{t("target")}</div>
-            <div className="stat-value">{fmtUsd(row.target)}</div>
-          </div>
-          <div className="stat-tile">
-            <div className="stat-label">R/R</div>
-            <div className="stat-value">{row.rr != null ? row.rr.toFixed(2) : "—"}{row.rr_band ? ` (${row.rr_band})` : ""}</div>
-          </div>
           <div className="stat-tile">
             <div className="stat-label">{t("th_grade")}</div>
             <div className="stat-value">{row.chart_grade ?? "—"}</div>
@@ -112,7 +88,6 @@ export default function WatchlistChartModal({ row, onClose }: { row: WatchlistRo
         {confluenceSignals.length > 0 && (
           <p className="meta-line">Confluence: {confluenceSignals.join(", ")}</p>
         )}
-        {visionNote && <p className="verdict-reasoning" style={{ marginTop: "0.5rem" }}>{visionNote}</p>}
 
         <div className="tv-frame" style={{ marginTop: "1rem" }}>
           <span className="tv-sweep" />

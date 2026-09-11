@@ -9,8 +9,11 @@ import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
 //    bearer token. Gating it here would break the daily scan.
 //  - /api/telegram-webhook -- called by Telegram's servers, no browser
 //    session either, authenticated by its own secret-token header instead.
+//  - /api/watchlist/recheck -- called by Vercel Cron (see vercel.json), no
+//    browser session either, authenticated by its own CRON_SECRET bearer
+//    check instead.
 //  - Next.js internals and static assets.
-const PUBLIC_PATHS = ["/login", "/register", "/api/auth", "/api/ingest", "/api/telegram-webhook"];
+const PUBLIC_PATHS = ["/login", "/register", "/api/auth", "/api/ingest", "/api/telegram-webhook", "/api/watchlist/recheck"];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

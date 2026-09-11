@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/watchlist/recheck",
+      "schedule": "0 14 * * *"
+    }
+  ]
+}
