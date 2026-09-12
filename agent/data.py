@@ -15,12 +15,29 @@ CACHE = Path(__file__).resolve().parent.parent / "output" / "_cache"
 CACHE.mkdir(parents=True, exist_ok=True)
 
 
+def _drop_incomplete_trailing_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop trailing rows with a NaN Close -- the data source occasionally reports
+    the most recent session before its OHLC has actually settled (Volume present,
+    price columns still NaN), which silently poisons every iloc[-1]-based check
+    downstream (regime, sector rotation, technicals all read the last row as
+    "today"). Only trims from the end, never touches real historical gaps."""
+    if df.empty or "Close" not in df.columns:
+        return df
+    valid = df["Close"].notna()
+    if valid.all():
+        return df
+    last_valid = valid[valid].index[-1] if valid.any() else None
+    if last_valid is None:
+        return df.iloc[0:0]
+    return df.loc[:last_valid]
+
+
 def history(ticker: str, period: str = "2y", interval: str = "1d",
             max_age_hours: float = 12) -> pd.DataFrame:
     """Daily OHLCV for one ticker, cached as parquet."""
     f = CACHE / f"{ticker.replace('^','_')}_{period}_{interval}.parquet"
     if f.exists() and (time.time() - f.stat().st_mtime) < max_age_hours * 3600:
-        return pd.read_parquet(f)
+        return _drop_incomplete_trailing_rows(pd.read_parquet(f))
     df = yf.Ticker(ticker).history(period=period, interval=interval, auto_adjust=True)
     if df is None or df.empty:
         return pd.DataFrame()
@@ -29,7 +46,7 @@ def history(ticker: str, period: str = "2y", interval: str = "1d",
         df.to_parquet(f)
     except Exception:
         pass
-    return df
+    return _drop_incomplete_trailing_rows(df)
 
 
 def batch_history(tickers: list[str], period: str = "1y") -> dict[str, pd.DataFrame]:
@@ -44,7 +61,7 @@ def batch_history(tickers: list[str], period: str = "1y") -> dict[str, pd.DataFr
         return out
     for t in tickers:
         try:
-            df = raw[t].dropna(how="all")
+            df = _drop_incomplete_trailing_rows(raw[t].dropna(how="all"))
             if not df.empty:
                 out[t] = df
         except Exception:
